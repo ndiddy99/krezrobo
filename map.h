@@ -1,6 +1,10 @@
 #define MAP_SIZE_Y 15
 #define MAP_SIZE_X 20
 
+const u8 sideEnterMaps[]={1,2,3,11};
+const u8 topEnterMaps[]={4,5,8,9};
+const u8 bottomEnterMaps[]={0,5,6,7,10,12};
+
 const u8 maps[13][15][20]= {
 	
 	{{topLeftWall,topWall,topWall,topWall,topWall,topWall,topWall,blank,blank,blank,blank,blank,blank,topWall,topWall,topWall,topWall,topWall,topWall,topRightWall},
