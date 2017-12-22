@@ -6,36 +6,40 @@
 #include "main.h" //structs
 #include <stdlib.h>		// std C routines
 #include <stdio.h>
+#define TILEMAP_OFFSET 128 //offset in tilemap due to system font taking up first half
 
 u8 i,j,mapNum,slowCounter;
 u16 currentTile,currentTileTemp;
 
 SPRITE player;
 PROJECTILE playerShot;
+SPRITE robots[10];
 
 void drawMap(u8 mapNum);
 u8 checkPlayerBGCollision(void);
 u8 checkShotBGCollision(PROJECTILE shot);
 void setPlayerStartingPoint(u8 location);
 void switchScreens(u8 direction);
+void initRobots(void);
+void spawnRobots(u8 numBots, u8 playerX, u8 playerY);
 
 void main(void) {
 	InitNGPC();
 	SysSetSystemFont();
-	
-	InstallTileSet(tiles,sizeof(tiles)/2);
+	InstallTileSetAt(tiles,sizeof(tiles)/2,TILEMAP_OFFSET);
 	ClearScreen(SCR_1_PLANE);
 	ClearScreen(SCR_2_PLANE);
 	SetBackgroundColour(RGB(0, 0, 0));
 	SetPalette(SCR_2_PLANE, 0, 0, RGB(3,2,9), RGB(0,0,0), RGB(0,0,0));
 	SetPalette(SCR_1_PLANE, 0, 0, RGB(15,15,15), RGB(15,15,15), RGB(15,15,15));
 	SetPalette(SPRITE_PLANE, 0, 0, RGB(15,15,15), RGB(15,0,2), RGB(15,15,0));
+	SetPalette(SPRITE_PLANE,1,0,RGB(0,15,0),RGB(15,15,15),RGB(15,15,15));
 
 	player.spriteID=0;
 	player.tileNum=playerStandingL;
 	setPlayerStartingPoint(0);
 	player.palette=0;
-	player.direction=2;
+	player.direction=4;
 	
 	playerShot.spriteID=2;
 	playerShot.tileNum=horizontalShot;
@@ -44,9 +48,13 @@ void main(void) {
 	playerShot.palette=0;
 	playerShot.hasBeenFired=0;
 	
-	SetSprite(playerShot.spriteID,playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
-	SetSprite(player.spriteID,player.tileNum,0,player.xPos,player.yPos,player.palette);
-	SetSprite(player.spriteID+1,player.tileNum+1,1,0,8,0); //second sprite is linked to the first one
+	initRobots();
+	
+	SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
+	SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //second sprite is linked to the first one
+	SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
+	//SetSprite(robots[0].spriteID,TILEMAP_OFFSET+robots[0].tileNum,0,robots[0].xPos,robots[0].yPos,robots[0].palette);
+	spawnRobots(2,player.xPos,player.yPos);
 	drawMap(0);
 	currentTile=0;
 	slowCounter=0;
@@ -163,6 +171,10 @@ void main(void) {
 			}
 			
 			playerShot.direction=player.direction;
+			if (playerShot.direction==2 || playerShot.direction==6)
+				playerShot.tileNum=verticalShot;
+			else
+				playerShot.tileNum=horizontalShot;
 			playerShot.hasBeenFired=1;
 		}
 
@@ -215,7 +227,7 @@ void main(void) {
 				case 7:
 				if (player.tileNum < playerStandingR || player.tileNum >= playerWalkingR2)
 					player.tileNum=playerStandingR;
-				else 
+				else
 					player.tileNum+=2;	
 				break;
 				default:
@@ -242,13 +254,13 @@ void main(void) {
 				break;
 			}
 		}
-		PrintNumber(SCR_1_PLANE,0,0,15,playerShot.xPos,4);
+		PrintNumber(SCR_1_PLANE,0,0,15,playerShot.xPos,3);
 		PrintNumber(SCR_1_PLANE,0,0,16,playerShot.yPos,4);
 		PrintNumber(SCR_1_PLANE,0,0,17,player.direction,4);
 		PrintNumber(SCR_1_PLANE,0,0,18,playerShot.direction,4);
-		SetSprite(playerShot.spriteID,playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
-		SetSprite(player.spriteID,player.tileNum,0,player.xPos,player.yPos,player.palette);
-		SetSprite(player.spriteID+1,player.tileNum+1,1,0,8,0);
+		SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
+		SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
+		SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0);
 		
 		//movement between screens
 		if (player.xPos==0) { //exit to the left
@@ -271,18 +283,18 @@ void main(void) {
 void drawMap(u8 mapNum) {
 	for (i=0; i < MAP_SIZE_X;i++) {
 		for (j=0; j < MAP_SIZE_Y;j++) {
-			PutTile(SCR_2_PLANE,0,i,j,maps[mapNum][j][i]);
+			PutTile(SCR_2_PLANE,0,i,j,TILEMAP_OFFSET+maps[mapNum][j][i]);
 		}
 	}	
 }
 u8 checkPlayerBGCollision() {
 	GetTile(SCR_2_PLANE,NULL,(player.xPos+4)>>3,(player.yPos+8)>>3,&currentTile); //collision detection
-	return currentTile!=blank; //1 if collision, 0 if not
+	return (currentTile-TILEMAP_OFFSET)!=blank; //1 if collision, 0 if not
 }
 
 u8 checkShotBGCollision(PROJECTILE shot) {
 	GetTile(SCR_2_PLANE,NULL,(shot.xPos+4)>>3,(shot.yPos+4)>>3,&currentTile); //collision detection
-	return currentTile!=blank; //1 if collision, 0 if not	
+	return (currentTile-TILEMAP_OFFSET)!=blank; //1 if collision, 0 if not	
 }
 
 void setPlayerStartingPoint(u8 location) {
@@ -328,5 +340,31 @@ void switchScreens(u8 direction) {
 		drawMap(topEnterMaps[GetRandom(3)]);
 		setPlayerStartingPoint(1);
 		break;
+	}
+	spawnRobots(5,player.xPos,player.yPos);
+}
+
+void initRobots() {
+	for (i=0; i < sizeof(robots)/sizeof(robots[0]); i++) {
+		robots[i].spriteID=3+i*2;
+		robots[i].tileNum=robotStanding1;
+		robots[i].xPos=0;
+		robots[i].yPos=0;
+		robots[i].palette=1;	
+	}	
+}
+
+void spawnRobots(u8 numBots, u8 playerX, u8 playerY) {
+	SeedRandom();
+	for (i=0; i < numBots; i++) {
+		do {  //10x10 area around player shouldnt have robots
+			robots[i].xPos=GetRandom(130)+10; //between 10 and 140
+		} while (!(robots[i].xPos > playerX-10) && !(robots[i].xPos < playerX+10));
+		
+		do { //10x10 area around player shouldnt have robots
+			robots[i].yPos=GetRandom(80)+10; //between 10 and 90
+		} while (!(robots[i].yPos > playerY-10) && !(robots[i].yPos < playerY+10));
+		SetSprite(robots[i].spriteID,TILEMAP_OFFSET+robots[i].tileNum,0,robots[i].xPos,robots[i].yPos,robots[i].palette);
+		SetSprite(robots[i].spriteID+1,TILEMAP_OFFSET+robots[i].tileNum+1,1,0,8,robots[i].palette);
 	}
 }
