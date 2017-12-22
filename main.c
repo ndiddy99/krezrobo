@@ -357,13 +357,13 @@ void initRobots() {
 void spawnRobots(u8 numBots, u8 playerX, u8 playerY) {
 	SeedRandom();
 	for (i=0; i < numBots; i++) {
-		do {  //10x10 area around player shouldnt have robots
+		do {  //30x30 area around player shouldnt have robots (nondeterministic af but yolo)
 			robots[i].xPos=GetRandom(130)+10; //between 10 and 140
-		} while (!(robots[i].xPos > playerX-10) && !(robots[i].xPos < playerX+10));
+		} while (!(robots[i].xPos > playerX-30) && !(robots[i].xPos < playerX+30));
 		
-		do { //10x10 area around player shouldnt have robots
+		do { 
 			robots[i].yPos=GetRandom(80)+10; //between 10 and 90
-		} while (!(robots[i].yPos > playerY-10) && !(robots[i].yPos < playerY+10));
+		} while (!(robots[i].yPos > playerY-30) && !(robots[i].yPos < playerY+30));
 		SetSprite(robots[i].spriteID,TILEMAP_OFFSET+robots[i].tileNum,0,robots[i].xPos,robots[i].yPos,robots[i].palette);
 		SetSprite(robots[i].spriteID+1,TILEMAP_OFFSET+robots[i].tileNum+1,1,0,8,robots[i].palette);
 	}
