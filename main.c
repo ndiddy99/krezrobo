@@ -147,19 +147,19 @@ void switchScreens(u8 direction) {
 	switch(direction) {
 		case 0:
 		drawMap(sideEnterMaps[GetRandom(3)]);
-		setPlayerStartingPoint(0);
+		setPlayerStartingPoint(2);
 		break;
 		case 1:
-		drawMap(topEnterMaps[GetRandom(3)]);
-		setPlayerStartingPoint(1);
+		drawMap(bottomEnterMaps[GetRandom(5)]);
+		setPlayerStartingPoint(3);
 		break;
 		case 2:
 		drawMap(sideEnterMaps[GetRandom(3)]);
-		setPlayerStartingPoint(2);
+		setPlayerStartingPoint(0);
 		break;
 		case 3:
-		drawMap(bottomEnterMaps[GetRandom(5)]);
-		setPlayerStartingPoint(3);
+		drawMap(topEnterMaps[GetRandom(3)]);
+		setPlayerStartingPoint(1);
 		break;
 	}
 }
