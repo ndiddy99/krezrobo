@@ -9,10 +9,13 @@
 
 u8 i,j,mapNum,slowCounter;
 u16 currentTile,currentTileTemp;
+
 SPRITE player;
 PROJECTILE playerShot;
+
 void drawMap(u8 mapNum);
-u8 checkBGCollision(void);
+u8 checkPlayerBGCollision(void);
+u8 checkShotBGCollision(PROJECTILE shot);
 void setPlayerStartingPoint(u8 location);
 void switchScreens(u8 direction);
 
@@ -23,15 +26,16 @@ void main(void) {
 	InstallTileSet(tiles,sizeof(tiles)/2);
 	ClearScreen(SCR_1_PLANE);
 	ClearScreen(SCR_2_PLANE);
-	SetBackgroundColour(RGB(15, 15, 15));
+	SetBackgroundColour(RGB(0, 0, 0));
 	SetPalette(SCR_2_PLANE, 0, 0, RGB(3,2,9), RGB(0,0,0), RGB(0,0,0));
-	SetPalette(SPRITE_PLANE, 0, 0, RGB(0,0,0), RGB(15,0,2), RGB(15,15,0));
+	SetPalette(SCR_1_PLANE, 0, 0, RGB(15,15,15), RGB(15,15,15), RGB(15,15,15));
+	SetPalette(SPRITE_PLANE, 0, 0, RGB(15,15,15), RGB(15,0,2), RGB(15,15,0));
 
 	player.spriteID=0;
 	player.tileNum=playerStandingL;
 	setPlayerStartingPoint(0);
 	player.palette=0;
-	player.direction=0;
+	player.direction=2;
 	
 	playerShot.spriteID=2;
 	playerShot.tileNum=horizontalShot;
@@ -49,45 +53,115 @@ void main(void) {
 
 
 	while (1) {
+		
+/* player direction:
+			 1 2 3
+			  \|/
+			0 - - 4
+			  /|\
+			 7 6 5
+*/		
+		
+		
 		if (slowCounter) {	
 			if (!JOYPAD)
 				player.isMoving=0;
 			else
 				player.isMoving=1;
 			if (JOYPAD & J_LEFT) {
-				player.xPos--;
-				if (checkBGCollision())
-					player.xPos++;
-				player.direction=0;
-			}
-			if (JOYPAD & J_UP) {
-				player.yPos--;
-				if (checkBGCollision())
-					player.yPos++;
-				player.direction=1;
-			}
-			if (JOYPAD & J_RIGHT) {
-				player.xPos++;
-				if (checkBGCollision())
+				if (JOYPAD & J_UP) {	//up-left
 					player.xPos--;
+					if (checkPlayerBGCollision())
+						player.xPos++;
+					player.yPos--;
+					if (checkPlayerBGCollision())
+						player.yPos++;
+					player.direction=1;
+				}
+				else if (JOYPAD & J_DOWN) { //down-left
+					player.xPos--;
+					if (checkPlayerBGCollision())
+						player.xPos++;
+					player.yPos++;
+					if (checkPlayerBGCollision())
+						player.yPos--;
+					player.direction=7;
+				}				
+				else { //left
+					player.xPos--;
+					if (checkPlayerBGCollision())
+						player.xPos++;
+					player.direction=0;
+				}
+			}
+			else if (JOYPAD & J_RIGHT) {
+				if (JOYPAD & J_UP) { //up-right
+					player.xPos++;
+					if (checkPlayerBGCollision())
+						player.xPos--;
+					player.yPos--;
+					if (checkPlayerBGCollision())
+						player.yPos++;
+					player.direction=3;
+				}
+				else if (JOYPAD & J_DOWN) { //down-right
+					player.xPos++;
+					if (checkPlayerBGCollision())
+						player.xPos--;
+					player.yPos++;
+					if (checkPlayerBGCollision())
+						player.yPos--;
+					player.direction=5;
+				}				
+				else { //right
+					player.xPos++;
+					if (checkPlayerBGCollision())
+						player.xPos--;
+					player.direction=4;
+				}
+			}
+			else if (JOYPAD & J_UP) { //up
+				player.yPos--;
+				if (checkPlayerBGCollision())
+					player.yPos++;
 				player.direction=2;
 			}
-			if (JOYPAD & J_DOWN) { 
+			else if (JOYPAD & J_DOWN) { //down
 				player.yPos++;
-				if (checkBGCollision())
+				if (checkPlayerBGCollision())
 					player.yPos--;
-				player.direction=3;
+				player.direction=6;
 			}
 		slowCounter=0;
 		}
 		else
 			slowCounter=1;
-		if ((JOYPAD & J_A) && !playerShot.hasBeenFired) {
-			if (player.direction==0)
+		if ((JOYPAD & J_A) && !playerShot.hasBeenFired) { //determines shot starting location
+			switch(player.direction) {
+				case 0:
+				case 1: //facing left
+				case 7:
 				playerShot.xPos=player.xPos-6;
-			else
+				playerShot.yPos=player.yPos+4;
+				break;
+				
+				case 2: //facing up
+				playerShot.xPos=player.xPos;
+				playerShot.yPos=player.yPos-4;
+				break;
+				
+				case 3:
+				case 4: //facing right
+				case 5: 
 				playerShot.xPos=player.xPos+6;
-			playerShot.yPos=player.yPos+4;
+				playerShot.yPos=player.yPos+4;
+				break;
+				case 6: //facing down
+				playerShot.xPos=player.xPos;
+				playerShot.yPos=player.yPos+12;
+				break;
+			}
+			
 			playerShot.direction=player.direction;
 			playerShot.hasBeenFired=1;
 		}
@@ -98,12 +172,28 @@ void main(void) {
 				playerShot.xPos-=2;
 				break;
 				case 1:
+				playerShot.xPos-=2;
 				playerShot.yPos-=2;
 				break;
 				case 2:
-				playerShot.xPos+=2;
+				playerShot.yPos-=2;
 				break;
 				case 3:
+				playerShot.xPos+=2;
+				playerShot.yPos-=2;
+				break;
+				case 4:
+				playerShot.xPos+=2;
+				break;
+				case 5:
+				playerShot.xPos+=2;
+				playerShot.yPos+=2;
+				break;
+				case 6:
+				playerShot.yPos+=2;
+				break;
+				case 7:
+				playerShot.xPos-=2;
 				playerShot.yPos+=2;
 				break;
 			}
@@ -114,12 +204,15 @@ void main(void) {
 			playerShot.yPos=0;
 		}
 		
-		if (playerShot.xPos > 160 || playerShot.yPos > 110)
+		if (playerShot.xPos > 160 || playerShot.yPos > 110 || checkShotBGCollision(playerShot))
 			playerShot.hasBeenFired=0;
+		
 		
 		if (player.isMoving) {
 			switch (player.direction) {
 				case 0:
+				case 1:
+				case 7:
 				if (player.tileNum < playerStandingR || player.tileNum >= playerWalkingR2)
 					player.tileNum=playerStandingR;
 				else 
@@ -136,22 +229,23 @@ void main(void) {
 		else {
 			switch (player.direction) {
 				case 0:
+				case 1:
+				case 7:		
 					player.tileNum=playerStandingR;
 				break;
-				case 1:
-					player.tileNum=playerStandingL;
-				break;
 				case 2:
-					player.tileNum=playerStandingL;
-				break;
 				case 3:
+				case 4:
+				case 5:
+				case 6:
 					player.tileNum=playerStandingL;
 				break;
-				
 			}
 		}
 		PrintNumber(SCR_1_PLANE,0,0,15,playerShot.xPos,4);
 		PrintNumber(SCR_1_PLANE,0,0,16,playerShot.yPos,4);
+		PrintNumber(SCR_1_PLANE,0,0,17,player.direction,4);
+		PrintNumber(SCR_1_PLANE,0,0,18,playerShot.direction,4);
 		SetSprite(playerShot.spriteID,playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
 		SetSprite(player.spriteID,player.tileNum,0,player.xPos,player.yPos,player.palette);
 		SetSprite(player.spriteID+1,player.tileNum+1,1,0,8,0);
@@ -181,9 +275,14 @@ void drawMap(u8 mapNum) {
 		}
 	}	
 }
-u8 checkBGCollision() {
+u8 checkPlayerBGCollision() {
 	GetTile(SCR_2_PLANE,NULL,(player.xPos+4)>>3,(player.yPos+8)>>3,&currentTile); //collision detection
 	return currentTile!=blank; //1 if collision, 0 if not
+}
+
+u8 checkShotBGCollision(PROJECTILE shot) {
+	GetTile(SCR_2_PLANE,NULL,(shot.xPos+4)>>3,(shot.yPos+4)>>3,&currentTile); //collision detection
+	return currentTile!=blank; //1 if collision, 0 if not	
 }
 
 void setPlayerStartingPoint(u8 location) {
