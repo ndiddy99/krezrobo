@@ -6,9 +6,10 @@
 #include "main.h" //structs
 #include <stdlib.h>		// std C routines
 #include <stdio.h>
-#define TILEMAP_OFFSET 128 //offset in tilemap due to system font taking up first half
 
-u8 i,j,mapNum,slowCounter;
+
+#define TILEMAP_OFFSET 128 //offset in tilemap due to system font taking up first half
+u8 i,j,mapNum,slowCounter,numRobots,robotAnimCounter;
 u16 currentTile,currentTileTemp;
 
 SPRITE player;
@@ -21,7 +22,9 @@ u8 checkShotBGCollision(PROJECTILE shot);
 void setPlayerStartingPoint(u8 location);
 void switchScreens(u8 direction);
 void initRobots(void);
-void spawnRobots(u8 numBots, u8 playerX, u8 playerY);
+void spawnRobots(u8 numRobots, u8 playerX, u8 playerY);
+void drawRobots(u8 numRobots);
+void animateRobots(u8 numRobots);
 
 void main(void) {
 	InitNGPC();
@@ -48,13 +51,15 @@ void main(void) {
 	playerShot.palette=0;
 	playerShot.hasBeenFired=0;
 	
+	numRobots=5;
+	robotAnimCounter=0;
 	initRobots();
 	
 	SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 	SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //second sprite is linked to the first one
 	SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
 	//SetSprite(robots[0].spriteID,TILEMAP_OFFSET+robots[0].tileNum,0,robots[0].xPos,robots[0].yPos,robots[0].palette);
-	spawnRobots(2,player.xPos,player.yPos);
+	spawnRobots(numRobots,player.xPos,player.yPos);
 	drawMap(0);
 	currentTile=0;
 	slowCounter=0;
@@ -258,9 +263,16 @@ void main(void) {
 		PrintNumber(SCR_1_PLANE,0,0,16,playerShot.yPos,4);
 		PrintNumber(SCR_1_PLANE,0,0,17,player.direction,4);
 		PrintNumber(SCR_1_PLANE,0,0,18,playerShot.direction,4);
+		
 		SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
+		
 		SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 		SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0);
+		
+		animateRobots(numRobots);
+		drawRobots(numRobots);
+		
+
 		
 		//movement between screens
 		if (player.xPos==0) { //exit to the left
@@ -341,7 +353,7 @@ void switchScreens(u8 direction) {
 		setPlayerStartingPoint(1);
 		break;
 	}
-	spawnRobots(5,player.xPos,player.yPos);
+	spawnRobots(numRobots,player.xPos,player.yPos);
 }
 
 void initRobots() {
@@ -350,13 +362,14 @@ void initRobots() {
 		robots[i].tileNum=robotStanding1;
 		robots[i].xPos=0;
 		robots[i].yPos=0;
-		robots[i].palette=1;	
+		robots[i].palette=1;
+		robots[i].isMoving=0;
 	}	
 }
 
-void spawnRobots(u8 numBots, u8 playerX, u8 playerY) {
+void spawnRobots(u8 numRobots, u8 playerX, u8 playerY) {
 	SeedRandom();
-	for (i=0; i < numBots; i++) {
+	for (i=0; i < numRobots; i++) {
 		do {  //30x30 area around player shouldnt have robots (nondeterministic af but yolo)
 			robots[i].xPos=GetRandom(130)+10; //between 10 and 140
 		} while (!(robots[i].xPos > playerX-30) && !(robots[i].xPos < playerX+30));
@@ -364,7 +377,27 @@ void spawnRobots(u8 numBots, u8 playerX, u8 playerY) {
 		do { 
 			robots[i].yPos=GetRandom(80)+10; //between 10 and 90
 		} while (!(robots[i].yPos > playerY-30) && !(robots[i].yPos < playerY+30));
+	}
+}
+
+void drawRobots(u8 numRobots) {
+	for (i=0; i < numRobots; i++) {
 		SetSprite(robots[i].spriteID,TILEMAP_OFFSET+robots[i].tileNum,0,robots[i].xPos,robots[i].yPos,robots[i].palette);
 		SetSprite(robots[i].spriteID+1,TILEMAP_OFFSET+robots[i].tileNum+1,1,0,8,robots[i].palette);
 	}
+}
+
+void animateRobots(u8 numRobots) {
+#define ANIMATION_DELAY 5
+	if (robotAnimCounter==ANIMATION_DELAY) {  
+		for (i=0; i < numRobots; i++) {
+			if (robots[i].tileNum < robotStanding1 || robots[i].tileNum >= robotStanding6)
+				robots[i].tileNum=robotStanding1;
+			else
+				robots[i].tileNum+=2;
+		}
+		robotAnimCounter=0;
+	}
+	else
+		robotAnimCounter++;
 }
