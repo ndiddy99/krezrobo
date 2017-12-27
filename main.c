@@ -20,11 +20,13 @@ void drawMap(u8 mapNum);
 u8 checkPlayerBGCollision(void);
 u8 checkShotBGCollision(PROJECTILE shot);
 void setPlayerStartingPoint(u8 location);
+void handlePlayerMovement(void);
 void switchScreens(u8 direction);
 void initRobots(void);
 void spawnRobots(u8 numRobots, u8 playerX, u8 playerY);
 void drawRobots(u8 numRobots);
 void animateRobots(u8 numRobots);
+void handleRobotShotCollision(PROJECTILE shot);
 
 void main(void) {
 	InitNGPC();
@@ -225,49 +227,18 @@ void main(void) {
 			playerShot.hasBeenFired=0;
 		
 		
-		if (player.isMoving) {
-			switch (player.direction) {
-				case 0:
-				case 1:
-				case 7:
-				if (player.tileNum < playerStandingR || player.tileNum >= playerWalkingR2)
-					player.tileNum=playerStandingR;
-				else
-					player.tileNum+=2;	
-				break;
-				default:
-				if (player.tileNum < playerStandingL || player.tileNum >= playerWalkingL2)
-					player.tileNum=playerStandingL;
-				else 
-					player.tileNum+=2;
-				break;
-			}
-		}
-		else {
-			switch (player.direction) {
-				case 0:
-				case 1:
-				case 7:		
-					player.tileNum=playerStandingR;
-				break;
-				case 2:
-				case 3:
-				case 4:
-				case 5:
-				case 6:
-					player.tileNum=playerStandingL;
-				break;
-			}
-		}
 		PrintNumber(SCR_1_PLANE,0,0,15,playerShot.xPos,3);
 		PrintNumber(SCR_1_PLANE,0,0,16,playerShot.yPos,4);
 		PrintNumber(SCR_1_PLANE,0,0,17,player.direction,4);
 		PrintNumber(SCR_1_PLANE,0,0,18,playerShot.direction,4);
 		
+		handlePlayerMovement();		
 		SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
 		
 		SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 		SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0);
+		
+		handleRobotShotCollision(playerShot);
 		
 		animateRobots(numRobots);
 		drawRobots(numRobots);
@@ -330,6 +301,39 @@ void setPlayerStartingPoint(u8 location) {
 		break;
 	}
 	
+}
+
+void handlePlayerMovement() {
+	if (player.isMoving) {
+		switch (player.direction) {
+			case 0:
+			case 1:
+			case 7:
+			if (player.tileNum < playerStandingR || player.tileNum >= playerWalkingR2)
+				player.tileNum=playerStandingR;
+			else
+				player.tileNum+=2;	
+			break;
+			default:
+			if (player.tileNum < playerStandingL || player.tileNum >= playerWalkingL2)
+				player.tileNum=playerStandingL;
+			else 
+				player.tileNum+=2;
+			break;
+		}
+	}
+	else {
+		switch (player.direction) {
+			case 0:
+			case 1:
+			case 7:		
+				player.tileNum=playerStandingR;
+			break;
+			default:
+				player.tileNum=playerStandingL;
+			break;
+		}
+	}
 }
 
 void switchScreens(u8 direction) {
@@ -400,4 +404,16 @@ void animateRobots(u8 numRobots) {
 	}
 	else
 		robotAnimCounter++;
+}
+
+void handleRobotShotCollision(PROJECTILE shot) {
+	for (i=0; i < numRobots; i++) {
+		if (robots[i].xPos !=0) { //if robot is on the playfield
+			if ((shot.xPos+4) > robots[i].xPos && (shot.xPos+5) < robots[i].xPos+9) {
+				if ((shot.yPos+4) > robots[i].yPos && (shot.yPos+5) < robots[i].yPos+10) {
+					robots[i].xPos=200; //move offscreen if collision
+				}
+			}
+		}
+	}
 }
