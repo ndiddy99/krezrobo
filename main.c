@@ -28,6 +28,7 @@ u8 checkRobotBGCollision(SPRITE robot);
 void drawRobots(u8 numRobots);
 void animateRobots(u8 numRobots);
 void handleRobotShotCollision(PROJECTILE* shot);
+void setRobotDirection(SPRITE* robot);
 
 void main(void) {
 	InitNGPC();
@@ -226,13 +227,7 @@ void main(void) {
 		
 		if (playerShot.xPos > 160 || playerShot.yPos > 110 || checkShotBGCollision(playerShot))
 			playerShot.hasBeenFired=0;
-		
-		
-		PrintNumber(SCR_1_PLANE,0,0,15,playerShot.xPos,3);
-		PrintNumber(SCR_1_PLANE,0,0,16,playerShot.yPos,4);
-		PrintNumber(SCR_1_PLANE,0,0,17,player.direction,4);
-		PrintNumber(SCR_1_PLANE,0,0,18,playerShot.direction,4);
-		
+			
 		handlePlayerMovement();		
 		SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
 		
@@ -243,6 +238,7 @@ void main(void) {
 		
 		animateRobots(numRobots);
 		drawRobots(numRobots);
+		setRobotDirection(&robots[0]);
 		
 
 		
@@ -426,4 +422,26 @@ void handleRobotShotCollision(PROJECTILE* shot) {
 			}
 		}
 	}
+}
+
+void setRobotDirection(SPRITE* robot) { //speed is a value from 0 to 5
+	if (robot->xPos >= player.xPos && robot->yPos >=player.yPos) { //robot is to the bottom-right of player
+		if (robot->xPos-player.xPos > robot->yPos-player.yPos) //if robot is closer to right
+			robot->direction=0; //go left
+		else //if robot's closer to the bottom, go up
+			robot->direction=2; 
+	}
+	else if (robot->xPos < player.xPos && robot->yPos >=player.yPos) { //robot is to the bottom left of player
+		if (player.xPos-robot->xPos > robot->yPos-player.yPos) //if robot is closer to left
+			robot->direction=4; //go right
+		else //if robot's closer to the bottom, go up
+			robot->direction=2;
+	}
+	else if (robot->xPos >= player.xPos && robot->yPos < player.yPos) { //robot is to the top-right of player
+		if (robot->xPos-player.xPos > player.yPos-robot->yPos) //if robot is closer to the right
+			robot->direction=0; //go left
+		else //if robot's closer to the top, go down
+			robot->direction=6;	
+	}
+	PrintNumber(SCR_1_PLANE,0,0,15,robot->direction,3);
 }
