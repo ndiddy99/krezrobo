@@ -9,7 +9,8 @@
 
 
 #define TILEMAP_OFFSET 128 //offset in tilemap due to system font taking up first half
-u8 i,j,mapNum,slowCounter,numRobots,playerAnimCounter,robotAnimCounter;
+u8 i,j,mapNum,slowCounter,numRobots,playerAnimCounter,robotStandingAnimCounter,robotWalkingAnimCounter,
+isRobotMoving,robotToMove;
 u16 currentTile;
 
 SPRITE player;
@@ -29,6 +30,8 @@ void drawRobots(u8 numRobots);
 void animateRobots(u8 numRobots);
 void handleRobotShotCollision(PROJECTILE* shot);
 void setRobotDirection(SPRITE* robot);
+void moveRobot(SPRITE* robot,u8 speed);
+void handleRobotMovement(u8 speed);
 
 void main(void) {
 	InitNGPC();
@@ -56,8 +59,12 @@ void main(void) {
 	playerShot.hasBeenFired=0;
 	
 	numRobots=5;
-	robotAnimCounter=0;
+	robotStandingAnimCounter=0;
+	robotWalkingAnimCounter=0;
+	isRobotMoving=0;
+	robotToMove=0;
 	initRobots();
+
 	
 	SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 	SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //second sprite is linked to the first one
@@ -238,9 +245,9 @@ void main(void) {
 		
 		animateRobots(numRobots);
 		drawRobots(numRobots);
-		setRobotDirection(&robots[0]);
-		
-
+		//setRobotDirection(&robots[0]);
+		//moveRobot(&robots[0],1);
+		handleRobotMovement(1);
 		
 		//movement between screens
 		if (player.xPos==0) { //exit to the left
@@ -261,7 +268,7 @@ void main(void) {
 	}
 }
 void drawMap(u8 mapNum) {
-	for (i=0; i < MAP_SIZE_X;i++) {
+	for (i=0; i < MAP_SIZE_X;++i) {
 		for (j=0; j < MAP_SIZE_Y;j++) {
 			PutTile(SCR_2_PLANE,0,i,j,TILEMAP_OFFSET+maps[mapNum][j][i]);
 		}
@@ -364,7 +371,7 @@ void switchScreens(u8 direction) {
 
 void initRobots() {
 #define NUM_PLAYER_SPRITES 3 //2 for player character, one for projectile
-	for (i=0; i < sizeof(robots)/sizeof(robots[0]); i++) {
+	for (i=0; i < sizeof(robots)/sizeof(robots[0]); ++i) {
 		robots[i].spriteID=NUM_PLAYER_SPRITES+i*2; //i*2 because there's another sprite being used by the bottom of the robot
 		robots[i].tileNum=robotStanding1;
 		robots[i].xPos=0;
@@ -376,7 +383,7 @@ void initRobots() {
 
 void spawnRobots(u8 numRobots, u8 playerX, u8 playerY) {
 	SeedRandom();
-	for (i=0; i < numRobots; i++) {
+	for (i=0; i < numRobots; ++i) {
 		do {  //robots shouldn't spawn inside walls
 			robots[i].xPos=GetRandom(130)+10; //between 10 and 140
 			robots[i].yPos=GetRandom(80)+10; //between 10 and 90
@@ -390,29 +397,32 @@ u8 checkRobotBGCollision(SPRITE robot) {
 }
 
 void drawRobots(u8 numRobots) {
-	for (i=0; i < numRobots; i++) {
+	for (i=0; i < numRobots; ++i) {
 		SetSprite(robots[i].spriteID,TILEMAP_OFFSET+robots[i].tileNum,0,robots[i].xPos,robots[i].yPos,robots[i].palette);
 		SetSprite(robots[i].spriteID+1,TILEMAP_OFFSET+robots[i].tileNum+1,1,0,8,robots[i].palette);
 	}
 }
 
 void animateRobots(u8 numRobots) {
-#define ANIMATION_DELAY 5
-	if (robotAnimCounter==ANIMATION_DELAY) {  
-		for (i=0; i < numRobots; i++) {
-			if (robots[i].tileNum < robotStanding1 || robots[i].tileNum >= robotStanding6)
-				robots[i].tileNum=robotStanding1;
-			else
-				robots[i].tileNum+=2;
+#define ROBOT_STANDING_ANIMATION_DELAY 5
+
+	if (robotStandingAnimCounter==ROBOT_STANDING_ANIMATION_DELAY) {  
+		for (i=0; i < numRobots; ++i) {
+			if (!robots[i].isMoving) {
+				if (robots[i].tileNum < robotStanding1 || robots[i].tileNum >= robotStanding6)
+					robots[i].tileNum=robotStanding1;
+				else
+					robots[i].tileNum+=2;
+			}
 		}
-		robotAnimCounter=0;
+		robotStandingAnimCounter=0;
 	}
 	else
-		robotAnimCounter++;
+		robotStandingAnimCounter++;
 }
 
 void handleRobotShotCollision(PROJECTILE* shot) {
-	for (i=0; i < numRobots; i++) {
+	for (i=0; i < numRobots; ++i) {
 		if (robots[i].xPos !=0) { //if robot is on the playfield
 			if ((shot->xPos+4) > robots[i].xPos && (shot->xPos+5) < robots[i].xPos+9) {
 				if ((shot->yPos+4) > robots[i].yPos && (shot->yPos+5) < robots[i].yPos+10) {
@@ -443,5 +453,71 @@ void setRobotDirection(SPRITE* robot) { //speed is a value from 0 to 5
 		else //if robot's closer to the top, go down
 			robot->direction=6;	
 	}
-	PrintNumber(SCR_1_PLANE,0,0,15,robot->direction,3);
+	else if (robot->xPos < player.xPos && robot->yPos < player.yPos) { //robot is to the top-left of player
+		if (player.xPos-robot->xPos > player.yPos-robot->yPos) //if robot is closer to the right
+			robot->direction=4; //go right
+		else //if robot's closer to the top, go down
+			robot->direction=6;	
+	}
+//	PrintNumber(SCR_1_PLANE,0,0,15,robot->direction,3);
+}
+
+void moveRobot(SPRITE* robot, u8 speed) { //valid speed values are 1-10
+#define ROBOT_WALKING_ANIMATION_DELAY 10
+	if (robot->isMoving) {
+		switch (robot->direction) {
+			case 0: //left
+			robot->xPos-=speed;
+			if (checkRobotBGCollision(*robot)) {
+				robot->xPos+=speed;
+				robot->isMoving=0;
+			}
+			break;
+			case 2: //up
+			robot->yPos-=speed;
+			if (checkRobotBGCollision(*robot)) {
+				robot->yPos+=speed;
+				robot->isMoving=0;
+			}
+			break;
+			case 4: //right
+			robot->xPos+=speed;
+			if (checkRobotBGCollision(*robot)) {
+				robot->xPos-=speed;
+				robot->isMoving=0;
+			}
+			break;
+			case 6: //down
+			robot->yPos+=speed;
+			if (checkRobotBGCollision(*robot)) {
+				robot->yPos-=speed;	
+				robot->isMoving=0;
+			}
+			break;
+		}
+		if (robotWalkingAnimCounter>ROBOT_WALKING_ANIMATION_DELAY) {
+			if (robot->tileNum==robotWalking1)
+				robot->tileNum=robotWalking2;
+			else
+				robot->tileNum=robotWalking1;
+			robotWalkingAnimCounter=0;
+		}
+		else
+			robotWalkingAnimCounter++;
+	}
+	else
+		isRobotMoving=0;
+}
+void handleRobotMovement(u8 speed) {
+	if (!isRobotMoving) {				//if a robot isn't moving, set a random one moving
+		robotToMove=GetRandom(numRobots);
+		robots[robotToMove].isMoving=1;
+		setRobotDirection(&robots[robotToMove]);
+		isRobotMoving=1;
+	}
+	else {
+		 //otherwise move the robot currently moving
+		moveRobot(&robots[robotToMove],speed);
+	}
+	
 }

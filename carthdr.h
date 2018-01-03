@@ -15,5 +15,5 @@ const short System = 0x1000;
 
 // You game name should go in CartTitle. It must be 12 characters
 // long so pad with spaces
-const char CartTitle[12] = "FRAMEWORK   ";
+const char CartTitle[12] = "KREZROBO    "; //its like berzerk but spelled backwards and slightly modified
 const long Reserved[4] = {0,0,0,0};
