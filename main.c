@@ -10,7 +10,7 @@
 
 #define TILEMAP_OFFSET 128 //offset in tilemap due to system font taking up first half
 u8 i,j,mapNum,slowCounter,numRobots,playerAnimCounter,robotStandingAnimCounter,robotWalkingAnimCounter,
-isRobotMoving,robotToMove;
+isRobotMoving,robotToMove,robotMotionDelay;
 u16 currentTile;
 
 SPRITE player;
@@ -247,7 +247,7 @@ void main(void) {
 		drawRobots(numRobots);
 		//setRobotDirection(&robots[0]);
 		//moveRobot(&robots[0],1);
-		handleRobotMovement(1);
+		handleRobotMovement(5);
 		
 		//movement between screens
 		if (player.xPos==0) { //exit to the left
@@ -462,51 +462,56 @@ void setRobotDirection(SPRITE* robot) { //speed is a value from 0 to 5
 //	PrintNumber(SCR_1_PLANE,0,0,15,robot->direction,3);
 }
 
-void moveRobot(SPRITE* robot, u8 speed) { //valid speed values are 1-10
+void moveRobot(SPRITE* robot, u8 speed) { //valid speed values are 1-5
 #define ROBOT_WALKING_ANIMATION_DELAY 10
-	if (robot->isMoving) {
-		switch (robot->direction) {
-			case 0: //left
-			robot->xPos-=speed;
-			if (checkRobotBGCollision(*robot)) {
-				robot->xPos+=speed;
-				robot->isMoving=0;
+	if (robotMotionDelay > 5-speed) {
+		if (robot->isMoving) {
+			switch (robot->direction) {
+				case 0: //left
+				robot->xPos--;
+				if (checkRobotBGCollision(*robot)) {
+					robot->xPos++;
+					robot->isMoving=0;
+				}
+				break;
+				case 2: //up
+				robot->yPos--;
+				if (checkRobotBGCollision(*robot)) {
+					robot->yPos++;
+					robot->isMoving=0;
+				}
+				break;
+				case 4: //right
+				robot->xPos++;
+				if (checkRobotBGCollision(*robot)) {
+					robot->xPos--;
+					robot->isMoving=0;
+				}
+				break;
+				case 6: //down
+				robot->yPos++;
+				if (checkRobotBGCollision(*robot)) {
+					robot->yPos--;	
+					robot->isMoving=0;
+				}
+				break;
 			}
-			break;
-			case 2: //up
-			robot->yPos-=speed;
-			if (checkRobotBGCollision(*robot)) {
-				robot->yPos+=speed;
-				robot->isMoving=0;
-			}
-			break;
-			case 4: //right
-			robot->xPos+=speed;
-			if (checkRobotBGCollision(*robot)) {
-				robot->xPos-=speed;
-				robot->isMoving=0;
-			}
-			break;
-			case 6: //down
-			robot->yPos+=speed;
-			if (checkRobotBGCollision(*robot)) {
-				robot->yPos-=speed;	
-				robot->isMoving=0;
-			}
-			break;
-		}
-		if (robotWalkingAnimCounter>ROBOT_WALKING_ANIMATION_DELAY) {
-			if (robot->tileNum==robotWalking1)
-				robot->tileNum=robotWalking2;
-			else
-				robot->tileNum=robotWalking1;
-			robotWalkingAnimCounter=0;
 		}
 		else
-			robotWalkingAnimCounter++;
+			isRobotMoving=0;
+		robotMotionDelay=0;
 	}
 	else
-		isRobotMoving=0;
+		robotMotionDelay++;
+	if (robotWalkingAnimCounter>ROBOT_WALKING_ANIMATION_DELAY) {
+				if (robot->tileNum==robotWalking1)
+					robot->tileNum=robotWalking2;
+				else
+					robot->tileNum=robotWalking1;
+				robotWalkingAnimCounter=0;
+			}
+			else
+				robotWalkingAnimCounter++;
 }
 void handleRobotMovement(u8 speed) {
 	if (!isRobotMoving) {				//if a robot isn't moving, set a random one moving
