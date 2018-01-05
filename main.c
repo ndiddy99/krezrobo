@@ -10,7 +10,7 @@
 
 #define TILEMAP_OFFSET 128 //offset in tilemap due to system font taking up first half
 u8 i,j,mapNum,slowCounter,numRobots,playerAnimCounter,robotStandingAnimCounter,robotWalkingAnimCounter,
-isRobotMoving,robotToMove,robotMotionDelay;
+isRobotMoving,robotToMove,robotMotionDelay,robotWalkCounter;
 u16 currentTile;
 
 SPRITE player;
@@ -63,6 +63,7 @@ void main(void) {
 	robotWalkingAnimCounter=0;
 	isRobotMoving=0;
 	robotToMove=0;
+	robotWalkCounter=0;
 	initRobots();
 
 	
@@ -247,7 +248,7 @@ void main(void) {
 		drawRobots(numRobots);
 		//setRobotDirection(&robots[0]);
 		//moveRobot(&robots[0],1);
-		handleRobotMovement(5);
+		handleRobotMovement(3);
 		
 		//movement between screens
 		if (player.xPos==0) { //exit to the left
@@ -464,34 +465,35 @@ void setRobotDirection(SPRITE* robot) { //speed is a value from 0 to 5
 
 void moveRobot(SPRITE* robot, u8 speed) { //valid speed values are 1-5
 #define ROBOT_WALKING_ANIMATION_DELAY 10
+
 	if (robotMotionDelay > 5-speed) {
-		if (robot->isMoving) {
+		if (robot->isMoving && robot->xPos > 0 && robot->xPos < 152 && robot->yPos > 0 && robot->yPos < 110) {
 			switch (robot->direction) {
 				case 0: //left
-				robot->xPos--;
+				robot->xPos-=2;
 				if (checkRobotBGCollision(*robot)) {
-					robot->xPos++;
+					robot->xPos+=2;
 					robot->isMoving=0;
 				}
 				break;
 				case 2: //up
-				robot->yPos--;
+				robot->yPos-=2;
 				if (checkRobotBGCollision(*robot)) {
-					robot->yPos++;
+					robot->yPos+=2;
 					robot->isMoving=0;
 				}
 				break;
 				case 4: //right
-				robot->xPos++;
+				robot->xPos+=2;
 				if (checkRobotBGCollision(*robot)) {
-					robot->xPos--;
+					robot->xPos-=2;
 					robot->isMoving=0;
 				}
 				break;
 				case 6: //down
-				robot->yPos++;
+				robot->yPos+=2;
 				if (checkRobotBGCollision(*robot)) {
-					robot->yPos--;	
+					robot->yPos-=2;	
 					robot->isMoving=0;
 				}
 				break;
@@ -504,14 +506,14 @@ void moveRobot(SPRITE* robot, u8 speed) { //valid speed values are 1-5
 	else
 		robotMotionDelay++;
 	if (robotWalkingAnimCounter>ROBOT_WALKING_ANIMATION_DELAY) {
-				if (robot->tileNum==robotWalking1)
-					robot->tileNum=robotWalking2;
-				else
-					robot->tileNum=robotWalking1;
-				robotWalkingAnimCounter=0;
-			}
-			else
-				robotWalkingAnimCounter++;
+		if (robot->tileNum==robotWalking1)
+			robot->tileNum=robotWalking2;
+		else
+			robot->tileNum=robotWalking1;
+		robotWalkingAnimCounter=0;
+	}
+	else
+		robotWalkingAnimCounter++;
 }
 void handleRobotMovement(u8 speed) {
 	if (!isRobotMoving) {				//if a robot isn't moving, set a random one moving
@@ -523,6 +525,11 @@ void handleRobotMovement(u8 speed) {
 	else {
 		 //otherwise move the robot currently moving
 		moveRobot(&robots[robotToMove],speed);
+		robotWalkCounter++;
 	}
-	
+#define MAX_ROBOT_TICKS 50
+	if (robotWalkCounter==MAX_ROBOT_TICKS) { //if the same robot's walked for max # of "ticks", move another robot
+		isRobotMoving=0;
+		robotWalkCounter=0;
+	}
 }
