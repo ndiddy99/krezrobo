@@ -732,6 +732,13 @@ signed char Cos(unsigned char dAngle) {
    return SineTable256[dAngle+64];
 }
 
+u8 GetDifference(u8 a, u8 b) {
+	if (a >= b)
+		return a-b;
+	else
+		return b-a;
+}
+
 void GetTime(TIME * pTime) {
    __asm(" ld rw3, 2");		// VECT_RTCGET
    __asm(" ld xde, (xsp+4)");	// get ptr off stack

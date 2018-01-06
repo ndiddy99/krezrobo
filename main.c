@@ -15,7 +15,9 @@ u16 currentTile;
 
 SPRITE player;
 PROJECTILE playerShot;
-SPRITE robots[10];
+PROJECTILE robotShot;
+#define MAX_NUM_ROBOTS 10
+SPRITE robots[MAX_NUM_ROBOTS];
 
 void drawMap(u8 mapNum);
 u8 checkPlayerBGCollision(void);
@@ -32,6 +34,7 @@ void handleRobotShotCollision(PROJECTILE* shot);
 void setRobotDirection(SPRITE* robot);
 void moveRobot(SPRITE* robot,u8 speed);
 void handleRobotMovement(u8 speed);
+void shootPlayer(void);
 
 void main(void) {
 	InitNGPC();
@@ -42,8 +45,8 @@ void main(void) {
 	SetBackgroundColour(RGB(0, 0, 0));
 	SetPalette(SCR_2_PLANE, 0, 0, RGB(3,2,9), RGB(0,0,0), RGB(0,0,0));
 	SetPalette(SCR_1_PLANE, 0, 0, RGB(15,15,15), RGB(15,15,15), RGB(15,15,15));
-	SetPalette(SPRITE_PLANE, 0, 0, RGB(15,15,15), RGB(15,0,2), RGB(15,15,0));
-	SetPalette(SPRITE_PLANE,1,0,RGB(0,15,0),RGB(15,15,15),RGB(15,15,15));
+	SetPalette(SPRITE_PLANE, 0, 0, RGB(15,15,15), RGB(15,0,2), RGB(15,15,0)); //player palette
+	SetPalette(SPRITE_PLANE,1,0,RGB(0,15,0),RGB(15,15,0),RGB(15,15,15)); //robot palette
 
 	player.spriteID=0;
 	player.tileNum=playerStandingL;
@@ -53,8 +56,8 @@ void main(void) {
 	
 	playerShot.spriteID=2;
 	playerShot.tileNum=horizontalShot;
-	playerShot.xPos=50;
-	playerShot.yPos=20;
+	playerShot.xPos=200;
+	playerShot.yPos=0;
 	playerShot.palette=0;
 	playerShot.hasBeenFired=0;
 	
@@ -65,6 +68,13 @@ void main(void) {
 	robotToMove=0;
 	robotWalkCounter=0;
 	initRobots();
+	
+	robotShot.spriteID=robots[MAX_NUM_ROBOTS-1].spriteID+1;
+	robotShot.tileNum=horizontalShot;
+	robotShot.xPos=200;
+	robotShot.yPos=0;
+	robotShot.palette=1;
+	robotShot.hasBeenFired=0;
 
 	
 	SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
@@ -238,6 +248,7 @@ void main(void) {
 			
 		handlePlayerMovement();		
 		SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
+		SetSprite(robotShot.spriteID,TILEMAP_OFFSET+robotShot.tileNum,0,robotShot.xPos,robotShot.yPos,robotShot.palette);
 		
 		SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 		SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0);
@@ -249,6 +260,7 @@ void main(void) {
 		//setRobotDirection(&robots[0]);
 		//moveRobot(&robots[0],1);
 		handleRobotMovement(3);
+		shootPlayer(robots[0]);
 		
 		//movement between screens
 		if (player.xPos==0) { //exit to the left
@@ -498,6 +510,9 @@ void moveRobot(SPRITE* robot, u8 speed) { //valid speed values are 1-5
 				}
 				break;
 			}
+			if (GetDifference(robot->xPos,player.xPos) <= 20 || GetDifference(robot->yPos,player.yPos) <=20) {
+				shootPlayer(*robot);
+			}
 		}
 		else
 			isRobotMoving=0;
@@ -527,9 +542,42 @@ void handleRobotMovement(u8 speed) {
 		moveRobot(&robots[robotToMove],speed);
 		robotWalkCounter++;
 	}
+
 #define MAX_ROBOT_TICKS 50
 	if (robotWalkCounter==MAX_ROBOT_TICKS) { //if the same robot's walked for max # of "ticks", move another robot
 		isRobotMoving=0;
 		robotWalkCounter=0;
 	}
+}
+
+void shootPlayer(SPRITE robotShooting) {
+	if (!robotShot.hasBeenFired) {
+		robotShot.direction=robotShooting.direction;
+		robotShot.xPos=robotShooting.xPos;
+		robotShot.yPos=robotShooting.yPos;
+		robotShot.hasBeenFired=1;
+	}
+	else {
+		switch (robotShot.direction) {
+			case 0:
+			robotShot.xPos-=2;
+			robotShot.tileNum=horizontalShot;
+			break;
+			case 2:
+			robotShot.yPos-=2;
+			robotShot.tileNum=verticalShot;
+			break;
+			case 4:
+			robotShot.xPos+=2;
+			robotShot.tileNum=horizontalShot;
+			break;
+			case 6:
+			robotShot.yPos+=2;
+			robotShot.tileNum=verticalShot;
+			break;
+		}
+		if (robotShot.xPos > 160 || robotShot.yPos > 110 || checkShotBGCollision(robotShot))
+			robotShot.hasBeenFired=0;
+	}
+
 }

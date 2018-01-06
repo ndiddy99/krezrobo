@@ -65,7 +65,8 @@ MATH Functions
    Multiply32bit()		32 bit signed multiply
    Sin()			primitive sine
    Cos()			primitive cosine
-
+   GetDifference()  difference between 2 u8s
+   
 SOUND Functions - Basic
    InstallSoundDriver()
    InstallSounds()
@@ -206,6 +207,7 @@ unsigned char QRandom(void);
 
 signed char Sin(unsigned char dAngle);
 signed char Cos(unsigned char dAngle);
+u8 getDifference(u8 a, u8 b);
 
 
 void GetTime(TIME * pTime);
