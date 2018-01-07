@@ -10,8 +10,8 @@
 
 #define TILEMAP_OFFSET 128 //offset in tilemap due to system font taking up first half
 u8 i,j,mapNum,slowCounter,numRobots,playerAnimCounter,robotStandingAnimCounter,robotWalkingAnimCounter,
-isRobotMoving,robotToMove,robotMotionDelay,robotWalkCounter;
-u16 currentTile;
+isRobotMoving,robotToMove,robotMotionDelay,robotWalkCounter,lives;
+u16 currentTile,score;
 
 SPRITE player;
 PROJECTILE playerShot;
@@ -24,6 +24,8 @@ u8 checkPlayerBGCollision(void);
 u8 checkShotBGCollision(PROJECTILE shot);
 void setPlayerStartingPoint(u8 location);
 void handlePlayerMovement(void);
+void animatePlayerMovement(void);
+void handlePlayerShot(void);
 void switchScreens(u8 direction);
 void initRobots(void);
 void spawnRobots(u8 numRobots, u8 playerX, u8 playerY);
@@ -31,10 +33,11 @@ u8 checkRobotBGCollision(SPRITE robot);
 void drawRobots(u8 numRobots);
 void animateRobots(u8 numRobots);
 void handleRobotShotCollision(PROJECTILE* shot);
+void despawnRobot(SPRITE* robot);
 void setRobotDirection(SPRITE* robot);
 void moveRobot(SPRITE* robot,u8 speed);
 void handleRobotMovement(u8 speed);
-void shootPlayer(void);
+void shootPlayer(SPRITE robotShooting);
 
 void main(void) {
 	InitNGPC();
@@ -53,6 +56,8 @@ void main(void) {
 	setPlayerStartingPoint(0);
 	player.palette=0;
 	player.direction=4;
+	lives=3;
+	score=0;
 	
 	playerShot.spriteID=2;
 	playerShot.tileNum=horizontalShot;
@@ -61,7 +66,7 @@ void main(void) {
 	playerShot.palette=0;
 	playerShot.hasBeenFired=0;
 	
-	numRobots=5;
+	numRobots=10;
 	robotStandingAnimCounter=0;
 	robotWalkingAnimCounter=0;
 	isRobotMoving=0;
@@ -69,7 +74,7 @@ void main(void) {
 	robotWalkCounter=0;
 	initRobots();
 	
-	robotShot.spriteID=robots[MAX_NUM_ROBOTS-1].spriteID+1;
+	robotShot.spriteID=robots[MAX_NUM_ROBOTS-1].spriteID+2;
 	robotShot.tileNum=horizontalShot;
 	robotShot.xPos=200;
 	robotShot.yPos=0;
@@ -85,173 +90,18 @@ void main(void) {
 	spawnRobots(numRobots,player.xPos,player.yPos);
 	currentTile=0;
 	slowCounter=0;
-
+	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
+	PrintString(SCR_1_PLANE,0,0,16,"Score:");
 
 	while (1) {
+		handlePlayerMovement();
+		handlePlayerShot();	
+		animatePlayerMovement();	
 		
-/* player direction:
-			 1 2 3
-			  \|/
-			0 - - 4
-			  /|\
-			 7 6 5
-*/		
-		
-		
-		if (slowCounter) {	
-			if (!JOYPAD)
-				player.isMoving=0;
-			else
-				player.isMoving=1;
-			if (JOYPAD & J_LEFT) {
-				if (JOYPAD & J_UP) {	//up-left
-					player.xPos--;
-					if (checkPlayerBGCollision())
-						player.xPos++;
-					player.yPos--;
-					if (checkPlayerBGCollision())
-						player.yPos++;
-					player.direction=1;
-				}
-				else if (JOYPAD & J_DOWN) { //down-left
-					player.xPos--;
-					if (checkPlayerBGCollision())
-						player.xPos++;
-					player.yPos++;
-					if (checkPlayerBGCollision())
-						player.yPos--;
-					player.direction=7;
-				}				
-				else { //left
-					player.xPos--;
-					if (checkPlayerBGCollision())
-						player.xPos++;
-					player.direction=0;
-				}
-			}
-			else if (JOYPAD & J_RIGHT) {
-				if (JOYPAD & J_UP) { //up-right
-					player.xPos++;
-					if (checkPlayerBGCollision())
-						player.xPos--;
-					player.yPos--;
-					if (checkPlayerBGCollision())
-						player.yPos++;
-					player.direction=3;
-				}
-				else if (JOYPAD & J_DOWN) { //down-right
-					player.xPos++;
-					if (checkPlayerBGCollision())
-						player.xPos--;
-					player.yPos++;
-					if (checkPlayerBGCollision())
-						player.yPos--;
-					player.direction=5;
-				}				
-				else { //right
-					player.xPos++;
-					if (checkPlayerBGCollision())
-						player.xPos--;
-					player.direction=4;
-				}
-			}
-			else if (JOYPAD & J_UP) { //up
-				player.yPos--;
-				if (checkPlayerBGCollision())
-					player.yPos++;
-				player.direction=2;
-			}
-			else if (JOYPAD & J_DOWN) { //down
-				player.yPos++;
-				if (checkPlayerBGCollision())
-					player.yPos--;
-				player.direction=6;
-			}
-		slowCounter=0;
-		}
-		else
-			slowCounter=1;
-		if ((JOYPAD & J_A) && !playerShot.hasBeenFired) { //determines shot starting location
-			switch(player.direction) {
-				case 0:
-				case 1: //facing left
-				case 7:
-				playerShot.xPos=player.xPos-6;
-				playerShot.yPos=player.yPos+4;
-				break;
-				
-				case 2: //facing up
-				playerShot.xPos=player.xPos;
-				playerShot.yPos=player.yPos-4;
-				break;
-				
-				case 3:
-				case 4: //facing right
-				case 5: 
-				playerShot.xPos=player.xPos+6;
-				playerShot.yPos=player.yPos+4;
-				break;
-				case 6: //facing down
-				playerShot.xPos=player.xPos;
-				playerShot.yPos=player.yPos+12;
-				break;
-			}
-			
-			playerShot.direction=player.direction;
-			if (playerShot.direction==2 || playerShot.direction==6)
-				playerShot.tileNum=verticalShot;
-			else
-				playerShot.tileNum=horizontalShot;
-			playerShot.hasBeenFired=1;
-		}
-
-		if (playerShot.hasBeenFired) {
-			switch(playerShot.direction) {
-				case 0:
-				playerShot.xPos-=2;
-				break;
-				case 1:
-				playerShot.xPos-=2;
-				playerShot.yPos-=2;
-				break;
-				case 2:
-				playerShot.yPos-=2;
-				break;
-				case 3:
-				playerShot.xPos+=2;
-				playerShot.yPos-=2;
-				break;
-				case 4:
-				playerShot.xPos+=2;
-				break;
-				case 5:
-				playerShot.xPos+=2;
-				playerShot.yPos+=2;
-				break;
-				case 6:
-				playerShot.yPos+=2;
-				break;
-				case 7:
-				playerShot.xPos-=2;
-				playerShot.yPos+=2;
-				break;
-			}
-		}
-		
-		else { //if done firing, move shot offscreen
-			playerShot.xPos=200;
-			playerShot.yPos=0;
-		}
-		
-		if (playerShot.xPos > 160 || playerShot.yPos > 110 || checkShotBGCollision(playerShot))
-			playerShot.hasBeenFired=0;
-			
-		handlePlayerMovement();		
-		SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
-		SetSprite(robotShot.spriteID,TILEMAP_OFFSET+robotShot.tileNum,0,robotShot.xPos,robotShot.yPos,robotShot.palette);
-		
-		SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
-		SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0);
+		SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette); //draw player projectile 
+		SetSprite(robotShot.spriteID,TILEMAP_OFFSET+robotShot.tileNum,0,robotShot.xPos,robotShot.yPos,robotShot.palette); //draw robot projectile
+		SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette); //draw player sprite
+		SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //draw bottom player sprite
 		
 		handleRobotShotCollision(&playerShot);
 		
@@ -275,6 +125,10 @@ void main(void) {
 		else if (player.yPos==110) { //exit to the bottom
 			switchScreens(3);
 		}
+		
+		//show lives and score
+		PrintNumber(SCR_1_PLANE,0,6,15,lives,1);
+		PrintNumber(SCR_1_PLANE,0,6,16,score,GetNumDigits(score));
 		
 		WaitVsync();
 		
@@ -321,6 +175,89 @@ void setPlayerStartingPoint(u8 location) {
 }
 
 void handlePlayerMovement() {
+/* player direction:
+			 1 2 3
+			  \|/
+			0 - - 4
+			  /|\
+			 7 6 5
+*/			
+	if (slowCounter) {	
+		if (!JOYPAD)
+			player.isMoving=0;
+		else
+			player.isMoving=1;
+		if (JOYPAD & J_LEFT) {
+			if (JOYPAD & J_UP) {	//up-left
+				player.xPos--;
+				if (checkPlayerBGCollision())
+					player.xPos++;
+				player.yPos--;
+				if (checkPlayerBGCollision())
+					player.yPos++;
+				player.direction=1;
+			}
+			else if (JOYPAD & J_DOWN) { //down-left
+				player.xPos--;
+				if (checkPlayerBGCollision())
+					player.xPos++;
+				player.yPos++;
+				if (checkPlayerBGCollision())
+					player.yPos--;
+				player.direction=7;
+			}				
+			else { //left
+				player.xPos--;
+				if (checkPlayerBGCollision())
+					player.xPos++;
+				player.direction=0;
+			}
+		}
+		else if (JOYPAD & J_RIGHT) {
+			if (JOYPAD & J_UP) { //up-right
+				player.xPos++;
+				if (checkPlayerBGCollision())
+					player.xPos--;
+				player.yPos--;
+				if (checkPlayerBGCollision())
+					player.yPos++;
+				player.direction=3;
+			}
+			else if (JOYPAD & J_DOWN) { //down-right
+				player.xPos++;
+				if (checkPlayerBGCollision())
+					player.xPos--;
+				player.yPos++;
+				if (checkPlayerBGCollision())
+					player.yPos--;
+				player.direction=5;
+			}				
+			else { //right
+				player.xPos++;
+				if (checkPlayerBGCollision())
+					player.xPos--;
+				player.direction=4;
+			}
+		}
+		else if (JOYPAD & J_UP) { //up
+			player.yPos--;
+			if (checkPlayerBGCollision())
+				player.yPos++;
+			player.direction=2;
+		}
+		else if (JOYPAD & J_DOWN) { //down
+			player.yPos++;
+			if (checkPlayerBGCollision())
+				player.yPos--;
+			player.direction=6;
+		}
+	slowCounter=0;
+	}
+	else
+		slowCounter=1;
+}
+
+void animatePlayerMovement() {
 	if (playerAnimCounter) {
 		if (player.isMoving) {
 			switch (player.direction) {
@@ -358,6 +295,59 @@ void handlePlayerMovement() {
 		playerAnimCounter++;
 }
 
+void handlePlayerShot() {
+	if ((JOYPAD & J_A) && !playerShot.hasBeenFired) { //determines shot starting location
+		playerShot.xPos=player.xPos;
+		playerShot.yPos=player.yPos+4;
+		playerShot.direction=player.direction;
+		if (playerShot.direction==2 || playerShot.direction==6)
+			playerShot.tileNum=verticalShot;
+		else
+			playerShot.tileNum=horizontalShot;
+		playerShot.hasBeenFired=1;
+	}
+
+	if (playerShot.hasBeenFired) {
+		switch(playerShot.direction) {
+			case 0:
+			playerShot.xPos-=2;
+			break;
+			case 1:
+			playerShot.xPos-=2;
+			playerShot.yPos-=2;
+			break;
+			case 2:
+			playerShot.yPos-=2;
+			break;
+			case 3:
+			playerShot.xPos+=2;
+			playerShot.yPos-=2;
+			break;
+			case 4:
+			playerShot.xPos+=2;
+			break;
+			case 5:
+			playerShot.xPos+=2;
+			playerShot.yPos+=2;
+			break;
+			case 6:
+			playerShot.yPos+=2;
+			break;
+			case 7:
+			playerShot.xPos-=2;
+			playerShot.yPos+=2;
+			break;
+		}
+	}
+	
+	else { //if done firing, move shot offscreen
+		playerShot.xPos=200;
+		playerShot.yPos=0;
+	}
+	if (playerShot.xPos > 160 || playerShot.yPos > 110 || checkShotBGCollision(playerShot))
+		playerShot.hasBeenFired=0;
+}
+
 void switchScreens(u8 direction) {
 	//direction: 0: left exit, 1: top exit, 2: right exit, 3: bottom exit
 	SeedRandom(); //seed rng
@@ -383,8 +373,8 @@ void switchScreens(u8 direction) {
 }
 
 void initRobots() {
-#define NUM_PLAYER_SPRITES 3 //2 for player character, one for projectile
-	for (i=0; i < sizeof(robots)/sizeof(robots[0]); ++i) {
+#define NUM_PLAYER_SPRITES 3 //2 for player character, 1 for player projectile
+	for (i=0; i < MAX_NUM_ROBOTS; ++i) {
 		robots[i].spriteID=NUM_PLAYER_SPRITES+i*2; //i*2 because there's another sprite being used by the bottom of the robot
 		robots[i].tileNum=robotStanding1;
 		robots[i].xPos=0;
@@ -418,7 +408,6 @@ void drawRobots(u8 numRobots) {
 
 void animateRobots(u8 numRobots) {
 #define ROBOT_STANDING_ANIMATION_DELAY 5
-
 	if (robotStandingAnimCounter==ROBOT_STANDING_ANIMATION_DELAY) {  
 		for (i=0; i < numRobots; ++i) {
 			if (!robots[i].isMoving) {
@@ -439,12 +428,18 @@ void handleRobotShotCollision(PROJECTILE* shot) {
 		if (robots[i].xPos !=0) { //if robot is on the playfield
 			if ((shot->xPos+4) > robots[i].xPos && (shot->xPos+5) < robots[i].xPos+9) {
 				if ((shot->yPos+4) > robots[i].yPos && (shot->yPos+5) < robots[i].yPos+10) {
-					robots[i].xPos=200; //move offscreen if collision
+					despawnRobot(&robots[i]);
 					shot->hasBeenFired=0;
 				}
 			}
 		}
 	}
+}
+
+void despawnRobot(SPRITE* robot) {
+	robot->xPos=200; //move robot offscreen (todo: add robot death animation)
+	robot->isMoving=0;
+	score+=50; //increase score
 }
 
 void setRobotDirection(SPRITE* robot) { //speed is a value from 0 to 5
@@ -483,31 +478,23 @@ void moveRobot(SPRITE* robot, u8 speed) { //valid speed values are 1-5
 			switch (robot->direction) {
 				case 0: //left
 				robot->xPos-=2;
-				if (checkRobotBGCollision(*robot)) {
-					robot->xPos+=2;
-					robot->isMoving=0;
-				}
+				if (checkRobotBGCollision(*robot))
+					despawnRobot(robot); //kill robot if it touches a wall
 				break;
 				case 2: //up
 				robot->yPos-=2;
-				if (checkRobotBGCollision(*robot)) {
-					robot->yPos+=2;
-					robot->isMoving=0;
-				}
+				if (checkRobotBGCollision(*robot))
+					despawnRobot(robot);
 				break;
 				case 4: //right
 				robot->xPos+=2;
-				if (checkRobotBGCollision(*robot)) {
-					robot->xPos-=2;
-					robot->isMoving=0;
-				}
+				if (checkRobotBGCollision(*robot))
+					despawnRobot(robot);
 				break;
 				case 6: //down
 				robot->yPos+=2;
-				if (checkRobotBGCollision(*robot)) {
-					robot->yPos-=2;	
-					robot->isMoving=0;
-				}
+				if (checkRobotBGCollision(*robot))
+					despawnRobot(robot);
 				break;
 			}
 			if (GetDifference(robot->xPos,player.xPos) <= 20 || GetDifference(robot->yPos,player.yPos) <=20) {
@@ -547,6 +534,7 @@ void handleRobotMovement(u8 speed) {
 	if (robotWalkCounter==MAX_ROBOT_TICKS) { //if the same robot's walked for max # of "ticks", move another robot
 		isRobotMoving=0;
 		robotWalkCounter=0;
+		robots[robotToMove].isMoving=0;
 	}
 }
 
@@ -557,7 +545,7 @@ void shootPlayer(SPRITE robotShooting) {
 		robotShot.yPos=robotShooting.yPos;
 		robotShot.hasBeenFired=1;
 	}
-	else {
+	else if (robotShooting.isMoving) { //only fire if robot is moving
 		switch (robotShot.direction) {
 			case 0:
 			robotShot.xPos-=2;
@@ -579,5 +567,10 @@ void shootPlayer(SPRITE robotShooting) {
 		if (robotShot.xPos > 160 || robotShot.yPos > 110 || checkShotBGCollision(robotShot))
 			robotShot.hasBeenFired=0;
 	}
+	else
+		robotShot.hasBeenFired=0;
+//	PrintNumber(SCR_1_PLANE,0,0,17,robotShot.xPos,3);
+//	PrintNumber(SCR_1_PLANE,0,0,18,robotShot.yPos,3);
+
 
 }

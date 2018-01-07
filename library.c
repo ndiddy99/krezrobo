@@ -739,6 +739,19 @@ u8 GetDifference(u8 a, u8 b) {
 		return b-a;
 }
 
+u8 GetNumDigits(u16 num) { //gets number of digits in a u16 in O(n) time
+	if (num < 10)
+		return 1;
+	else if (num < 100)
+		return 2;
+	else if (num < 1000)
+		return 3;
+	else if (num < 10000)
+		return 4;
+	else
+		return 5;
+}
+
 void GetTime(TIME * pTime) {
    __asm(" ld rw3, 2");		// VECT_RTCGET
    __asm(" ld xde, (xsp+4)");	// get ptr off stack

@@ -208,6 +208,7 @@ unsigned char QRandom(void);
 signed char Sin(unsigned char dAngle);
 signed char Cos(unsigned char dAngle);
 u8 getDifference(u8 a, u8 b);
+u8 GetNumDigits(u16 num);
 
 
 void GetTime(TIME * pTime);
