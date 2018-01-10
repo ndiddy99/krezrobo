@@ -60,14 +60,11 @@ void main(void) {
 		
 		handlePlayerShotCollision(&robotShot);
 		handleRobotShotCollision(&playerShot);
-		
-		
+			
 		animateRobots(numRobots);
 		drawRobots(numRobots);
-		//setRobotDirection(&robots[0]);
-		//moveRobot(&robots[0],1);
 		handleRobotMovement(3);
-		shootPlayer(robots[0]);
+		shootPlayer(robots[robotToMove]);
 		
 		//movement between screens
 		if (player.xPos==0) { //exit to the left
@@ -512,9 +509,7 @@ void moveRobot(SPRITE* robot, u8 speed) { //valid speed values are 1-5
 					despawnRobot(robot);
 				break;
 			}
-			//if (GetDifference(robot->xPos,player.xPos) <= 20 || GetDifference(robot->yPos,player.yPos) <=20) {
-				shootPlayer(*robot);
-			//}
+			shootPlayer(*robot);
 		}
 		else
 			isRobotMoving=0;
