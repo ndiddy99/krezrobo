@@ -64,8 +64,7 @@ void main(void) {
 		animateRobots(numRobots);
 		drawRobots(numRobots);
 		handleRobotMovement(3);
-		shootPlayer(robots[robotToMove]);
-		
+
 		//movement between screens
 		if (player.xPos==0) { //exit to the left
 			switchScreens(0);
@@ -509,7 +508,6 @@ void moveRobot(SPRITE* robot, u8 speed) { //valid speed values are 1-5
 					despawnRobot(robot);
 				break;
 			}
-			shootPlayer(*robot);
 		}
 		else
 			isRobotMoving=0;
@@ -547,6 +545,7 @@ void handleRobotMovement(u8 speed) {
 	else {
 		 //otherwise move the robot currently moving
 		moveRobot(&robots[robotToMove],speed);
+		shootPlayer(robots[robotToMove]);
 		robotWalkCounter++;
 	}
 
