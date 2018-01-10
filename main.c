@@ -10,7 +10,7 @@
 
 #define TILEMAP_OFFSET 128 //offset in tilemap due to system font taking up first half
 u8 i,j,mapNum,slowCounter,numRobots,playerAnimCounter,robotStandingAnimCounter,robotWalkingAnimCounter,
-isRobotMoving,robotToMove,robotMotionDelay,robotWalkCounter,lives;
+isRobotMoving,robotToMove,robotMotionDelay,robotWalkCounter,lives,tempScreenCounter;
 u16 currentTile,score;
 
 SPRITE player;
@@ -19,6 +19,7 @@ PROJECTILE robotShot;
 #define MAX_NUM_ROBOTS 10
 SPRITE robots[MAX_NUM_ROBOTS];
 
+void initGame(void);
 void drawMap(u8 mapNum);
 u8 checkPlayerBGCollision(void);
 u8 checkShotBGCollision(PROJECTILE shot);
@@ -26,9 +27,11 @@ void setPlayerStartingPoint(u8 location);
 void handlePlayerMovement(void);
 void animatePlayerMovement(void);
 void handlePlayerShot(void);
-void switchScreens(u8 direction);
+void handlePlayerShotCollision(PROJECTILE* shot);
+void handlePlayerDeath(void);
+void switchScreens(u16 direction);
 void initRobots(void);
-void spawnRobots(u8 numRobots, u8 playerX, u8 playerY);
+void spawnRobots(u8 numRobots);
 u8 checkRobotBGCollision(SPRITE robot);
 void drawRobots(u8 numRobots);
 void animateRobots(u8 numRobots);
@@ -43,55 +46,7 @@ void main(void) {
 	InitNGPC();
 	SysSetSystemFont();
 	InstallTileSetAt(tiles,sizeof(tiles)/2,TILEMAP_OFFSET);
-	ClearScreen(SCR_1_PLANE);
-	ClearScreen(SCR_2_PLANE);
-	SetBackgroundColour(RGB(0, 0, 0));
-	SetPalette(SCR_2_PLANE, 0, 0, RGB(3,2,9), RGB(0,0,0), RGB(0,0,0));
-	SetPalette(SCR_1_PLANE, 0, 0, RGB(15,15,15), RGB(15,15,15), RGB(15,15,15));
-	SetPalette(SPRITE_PLANE, 0, 0, RGB(15,15,15), RGB(15,0,2), RGB(15,15,0)); //player palette
-	SetPalette(SPRITE_PLANE,1,0,RGB(0,15,0),RGB(15,15,0),RGB(15,15,15)); //robot palette
-
-	player.spriteID=0;
-	player.tileNum=playerStandingL;
-	setPlayerStartingPoint(0);
-	player.palette=0;
-	player.direction=4;
-	lives=3;
-	score=0;
-	
-	playerShot.spriteID=2;
-	playerShot.tileNum=horizontalShot;
-	playerShot.xPos=200;
-	playerShot.yPos=0;
-	playerShot.palette=0;
-	playerShot.hasBeenFired=0;
-	
-	numRobots=10;
-	robotStandingAnimCounter=0;
-	robotWalkingAnimCounter=0;
-	isRobotMoving=0;
-	robotToMove=0;
-	robotWalkCounter=0;
-	initRobots();
-	
-	robotShot.spriteID=robots[MAX_NUM_ROBOTS-1].spriteID+2;
-	robotShot.tileNum=horizontalShot;
-	robotShot.xPos=200;
-	robotShot.yPos=0;
-	robotShot.palette=1;
-	robotShot.hasBeenFired=0;
-
-	
-	SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
-	SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //second sprite is linked to the first one
-	SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
-	//SetSprite(robots[0].spriteID,TILEMAP_OFFSET+robots[0].tileNum,0,robots[0].xPos,robots[0].yPos,robots[0].palette);
-	drawMap(0);
-	spawnRobots(numRobots,player.xPos,player.yPos);
-	currentTile=0;
-	slowCounter=0;
-	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
-	PrintString(SCR_1_PLANE,0,0,16,"Score:");
+	initGame();
 
 	while (1) {
 		handlePlayerMovement();
@@ -103,7 +58,9 @@ void main(void) {
 		SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette); //draw player sprite
 		SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //draw bottom player sprite
 		
+		handlePlayerShotCollision(&robotShot);
 		handleRobotShotCollision(&playerShot);
+		
 		
 		animateRobots(numRobots);
 		drawRobots(numRobots);
@@ -134,9 +91,61 @@ void main(void) {
 		
 	}
 }
+
+void initGame() {
+	ClearScreen(SCR_1_PLANE);
+	ClearScreen(SCR_2_PLANE);
+	SetBackgroundColour(RGB(0, 0, 0));
+	SetPalette(SCR_2_PLANE, 0, 0, RGB(3,2,9), RGB(0,0,0), RGB(0,0,0));
+	SetPalette(SCR_1_PLANE, 0, 0, RGB(15,15,15), RGB(15,15,15), RGB(15,15,15));
+	SetPalette(SPRITE_PLANE, 0, 0, RGB(15,15,15), RGB(15,0,2), RGB(15,15,0)); //player palette
+	SetPalette(SPRITE_PLANE,1,0,RGB(0,15,0),RGB(15,15,0),RGB(15,15,15)); //robot palette
+	SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
+	SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //second sprite is linked to the first one
+	SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
+	
+	player.spriteID=0;
+	player.tileNum=playerStandingL;
+	setPlayerStartingPoint(0);
+	player.palette=0;
+	player.direction=4;
+	lives=3;
+	score=0;
+	
+	playerShot.spriteID=2;
+	playerShot.tileNum=horizontalShot;
+	playerShot.xPos=200;
+	playerShot.yPos=0;
+	playerShot.palette=0;
+	playerShot.hasBeenFired=0;
+	
+	numRobots=5;
+	robotStandingAnimCounter=0;
+	robotWalkingAnimCounter=0;
+	isRobotMoving=0;
+	robotToMove=0;
+	robotWalkCounter=0;
+	initRobots();
+	
+	robotShot.spriteID=robots[MAX_NUM_ROBOTS-1].spriteID+2;
+	robotShot.tileNum=horizontalShot;
+	robotShot.xPos=200;
+	robotShot.yPos=0;
+	robotShot.palette=1;
+	robotShot.hasBeenFired=0;
+	
+	SeedRandom();
+	switchScreens(GetRandom(3));
+	spawnRobots(numRobots);
+	currentTile=0;
+	slowCounter=0;
+	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
+	PrintString(SCR_1_PLANE,0,0,16,"Score:");
+}
+
 void drawMap(u8 mapNum) {
 	for (i=0; i < MAP_SIZE_X;++i) {
-		for (j=0; j < MAP_SIZE_Y;j++) {
+		for (j=0; j < MAP_SIZE_Y;++j) {
 			PutTile(SCR_2_PLANE,0,i,j,TILEMAP_OFFSET+maps[mapNum][j][i]);
 		}
 	}	
@@ -189,68 +198,46 @@ void handlePlayerMovement() {
 			player.isMoving=1;
 		if (JOYPAD & J_LEFT) {
 			if (JOYPAD & J_UP) {	//up-left
-				player.xPos--;
-				if (checkPlayerBGCollision())
-					player.xPos++;
-				player.yPos--;
-				if (checkPlayerBGCollision())
-					player.yPos++;
+				--player.xPos;
+				--player.yPos;
 				player.direction=1;
 			}
 			else if (JOYPAD & J_DOWN) { //down-left
-				player.xPos--;
-				if (checkPlayerBGCollision())
-					player.xPos++;
-				player.yPos++;
-				if (checkPlayerBGCollision())
-					player.yPos--;
+				--player.xPos;
+				++player.yPos;
 				player.direction=7;
 			}				
 			else { //left
-				player.xPos--;
-				if (checkPlayerBGCollision())
-					player.xPos++;
+				--player.xPos;
 				player.direction=0;
 			}
 		}
 		else if (JOYPAD & J_RIGHT) {
 			if (JOYPAD & J_UP) { //up-right
-				player.xPos++;
-				if (checkPlayerBGCollision())
-					player.xPos--;
+				++player.xPos;
 				player.yPos--;
-				if (checkPlayerBGCollision())
-					player.yPos++;
 				player.direction=3;
 			}
 			else if (JOYPAD & J_DOWN) { //down-right
-				player.xPos++;
-				if (checkPlayerBGCollision())
-					player.xPos--;
-				player.yPos++;
-				if (checkPlayerBGCollision())
-					player.yPos--;
+				++player.xPos;
+				++player.yPos;
 				player.direction=5;
 			}				
 			else { //right
-				player.xPos++;
-				if (checkPlayerBGCollision())
-					player.xPos--;
+				++player.xPos;
 				player.direction=4;
 			}
 		}
 		else if (JOYPAD & J_UP) { //up
 			player.yPos--;
-			if (checkPlayerBGCollision())
-				player.yPos++;
 			player.direction=2;
 		}
 		else if (JOYPAD & J_DOWN) { //down
-			player.yPos++;
-			if (checkPlayerBGCollision())
-				player.yPos--;
+			++player.yPos;
 			player.direction=6;
 		}
+		if (checkPlayerBGCollision())
+			handlePlayerDeath();
 	slowCounter=0;
 	}
 	else
@@ -348,7 +335,7 @@ void handlePlayerShot() {
 		playerShot.hasBeenFired=0;
 }
 
-void switchScreens(u8 direction) {
+void switchScreens(u16 direction) {
 	//direction: 0: left exit, 1: top exit, 2: right exit, 3: bottom exit
 	SeedRandom(); //seed rng
 	switch(direction) {
@@ -369,7 +356,32 @@ void switchScreens(u8 direction) {
 		setPlayerStartingPoint(1);
 		break;
 	}
-	spawnRobots(numRobots,player.xPos,player.yPos);
+	spawnRobots(numRobots);
+}
+
+void handlePlayerShotCollision(PROJECTILE* shot) {
+	if ((shot->xPos+4) > player.xPos && (shot->xPos+5) < player.xPos+9) {
+		if ((shot->yPos+4) > player.yPos && (shot->yPos+5) < player.yPos+10) {
+			handlePlayerDeath();
+			shot->hasBeenFired=0;
+		}
+	}
+}
+
+void handlePlayerDeath() { //todo: add death animation
+	if (lives!=0) {
+		--lives;
+		switchScreens(GetRandom(3));
+	}
+	else {
+		tempScreenCounter=100;
+		PrintString(SCR_1_PLANE,0,6,6,"Game over");
+		while (tempScreenCounter!=0) {
+			tempScreenCounter--;
+			WaitVsync();
+		} //todo: initgame should show title screen eventually
+		initGame();
+	}
 }
 
 void initRobots() {
@@ -381,16 +393,18 @@ void initRobots() {
 		robots[i].yPos=0;
 		robots[i].palette=1;
 		robots[i].isMoving=0;
+		robots[i].isAlive=1;
 	}	
 }
 
-void spawnRobots(u8 numRobots, u8 playerX, u8 playerY) {
+void spawnRobots(u8 numRobots) {
 	SeedRandom();
 	for (i=0; i < numRobots; ++i) {
 		do {  //robots shouldn't spawn inside walls
 			robots[i].xPos=GetRandom(130)+10; //between 10 and 140
 			robots[i].yPos=GetRandom(80)+10; //between 10 and 90
 		} while (checkRobotBGCollision(robots[i]));
+		robots[i].isAlive=1;
 	}
 }
 
@@ -437,8 +451,9 @@ void handleRobotShotCollision(PROJECTILE* shot) {
 }
 
 void despawnRobot(SPRITE* robot) {
-	robot->xPos=200; //move robot offscreen (todo: add robot death animation)
+	robot->xPos=180; //move robot offscreen (todo: add robot death animation)
 	robot->isMoving=0;
+	robot->isAlive=0;
 	score+=50; //increase score
 }
 
@@ -497,9 +512,9 @@ void moveRobot(SPRITE* robot, u8 speed) { //valid speed values are 1-5
 					despawnRobot(robot);
 				break;
 			}
-			if (GetDifference(robot->xPos,player.xPos) <= 20 || GetDifference(robot->yPos,player.yPos) <=20) {
+			//if (GetDifference(robot->xPos,player.xPos) <= 20 || GetDifference(robot->yPos,player.yPos) <=20) {
 				shootPlayer(*robot);
-			}
+			//}
 		}
 		else
 			isRobotMoving=0;
@@ -518,8 +533,18 @@ void moveRobot(SPRITE* robot, u8 speed) { //valid speed values are 1-5
 		robotWalkingAnimCounter++;
 }
 void handleRobotMovement(u8 speed) {
-	if (!isRobotMoving) {				//if a robot isn't moving, set a random one moving
-		robotToMove=GetRandom(numRobots);
+	if (!isRobotMoving) {				//if a robot isn't moving, set the closest one to the player moving
+	
+		u8 closestRobot=0;
+		for (i=0; i < numRobots; ++i) {
+			if (min(GetDifference(robots[i].xPos,player.xPos),GetDifference(robots[i].yPos,player.yPos)) <
+				min(GetDifference(robots[closestRobot].xPos,player.xPos),GetDifference(robots[closestRobot].yPos,player.yPos)) && robots[i].isAlive) {
+					closestRobot=i;
+			}
+		}	
+		PrintNumber(SCR_1_PLANE,0,0,18,closestRobot,3);
+		robotToMove=closestRobot;
+		
 		robots[robotToMove].isMoving=1;
 		setRobotDirection(&robots[robotToMove]);
 		isRobotMoving=1;
@@ -530,7 +555,7 @@ void handleRobotMovement(u8 speed) {
 		robotWalkCounter++;
 	}
 
-#define MAX_ROBOT_TICKS 50
+#define MAX_ROBOT_TICKS 20
 	if (robotWalkCounter==MAX_ROBOT_TICKS) { //if the same robot's walked for max # of "ticks", move another robot
 		isRobotMoving=0;
 		robotWalkCounter=0;
@@ -572,5 +597,6 @@ void shootPlayer(SPRITE robotShooting) {
 //	PrintNumber(SCR_1_PLANE,0,0,17,robotShot.xPos,3);
 //	PrintNumber(SCR_1_PLANE,0,0,18,robotShot.yPos,3);
 
-
 }
+
+
