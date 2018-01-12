@@ -10,7 +10,7 @@
 
 #define TILEMAP_OFFSET 128 //offset in tilemap due to system font taking up first half
 u8 i,j,mapNum,slowCounter,numRobots,playerAnimCounter,robotStandingAnimCounter,robotWalkingAnimCounter,
-isRobotMoving,robotToMove,robotMotionDelay,robotWalkCounter,lives,tempScreenCounter;
+isRobotMoving,robotToMove,robotMotionDelay,robotWalkCounter,lives,tempScreenCounter,numRobotsOnField;
 u16 currentTile,score;
 
 SPRITE player;
@@ -116,6 +116,7 @@ void initGame() {
 	playerShot.hasBeenFired=0;
 	
 	numRobots=5;
+	numRobotsOnField=5;
 	robotStandingAnimCounter=0;
 	robotWalkingAnimCounter=0;
 	isRobotMoving=0;
@@ -333,6 +334,13 @@ void handlePlayerShot() {
 
 void switchScreens(u16 direction) {
 	//direction: 0: left exit, 1: top exit, 2: right exit, 3: bottom exit
+	
+	ClearScreen(SCR_1_PLANE);
+	ClearScreen(SCR_2_PLANE);
+	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
+	PrintString(SCR_1_PLANE,0,0,16,"Score:");
+	
+	
 	SeedRandom(); //seed rng
 	switch(direction) {
 		case 0:
@@ -394,13 +402,22 @@ void initRobots() {
 }
 
 void spawnRobots(u8 numRobots) {
+	u8 diffX;
+	u8 diffY;
+	diffX=255;
+	diffY=255;
+#define DISTANCE_FROM_PLAYER 25
 	SeedRandom();
 	for (i=0; i < numRobots; ++i) {
 		do {  //robots shouldn't spawn inside walls
 			robots[i].xPos=GetRandom(130)+10; //between 10 and 140
 			robots[i].yPos=GetRandom(80)+10; //between 10 and 90
-		} while (checkRobotBGCollision(robots[i]));
+			diffX=GetDifference(robots[i].xPos,player.xPos);
+			diffY=GetDifference(robots[i].yPos,player.yPos);
+		} while (checkRobotBGCollision(robots[i]) && diffX > DISTANCE_FROM_PLAYER && diffY > DISTANCE_FROM_PLAYER);
+		
 		robots[i].isAlive=1;
+		numRobotsOnField=numRobots;
 	}
 }
 
@@ -451,6 +468,14 @@ void despawnRobot(SPRITE* robot) {
 	robot->isMoving=0;
 	robot->isAlive=0;
 	score+=50; //increase score
+	if (score % 1000==0) //new life every 1k points
+		lives++;
+	numRobotsOnField--;
+	if (numRobotsOnField==0) {
+		PrintString(SCR_1_PLANE,0,6,4,"Bonus: ");
+		PrintNumber(SCR_1_PLANE,0,11,4,numRobots*10,3);
+	}
+	
 }
 
 void setRobotDirection(SPRITE* robot) { //speed is a value from 0 to 5
@@ -549,7 +574,7 @@ void handleRobotMovement(u8 speed) {
 		robotWalkCounter++;
 	}
 
-#define MAX_ROBOT_TICKS 20
+#define MAX_ROBOT_TICKS 25
 	if (robotWalkCounter==MAX_ROBOT_TICKS) { //if the same robot's walked for max # of "ticks", move another robot
 		isRobotMoving=0;
 		robotWalkCounter=0;
