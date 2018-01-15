@@ -7,10 +7,21 @@
 #include <stdlib.h>		// std C routines
 #include <stdio.h>
 
+/*
+-----todo list-----
+title screen
+player death animation
+robot death animation
+level difficulty progression
+sound
+
+*/
+
 
 #define TILEMAP_OFFSET 128 //offset in tilemap due to system font taking up first half
-u8 i,j,mapNum,slowCounter,numRobots,playerAnimCounter,robotStandingAnimCounter,robotWalkingAnimCounter,
-isRobotMoving,robotToMove,robotMotionDelay,robotWalkCounter,lives,tempScreenCounter,numRobotsOnField;
+u8 mapNum,slowCounter,numRobots,playerAnimCounter,robotStandingAnimCounter,robotWalkingAnimCounter,
+isRobotMoving,robotToMove,robotMotionDelay,robotWalkCounter,lives,tempScreenCounter,numRobotsOnField,
+scrollXPos,scrollYPos;
 u16 currentTile,score;
 
 SPRITE player;
@@ -21,6 +32,8 @@ SPRITE robots[MAX_NUM_ROBOTS];
 
 void initGame(void);
 void drawMap(u8 mapNum);
+void drawMapColumn(u8 mapNum,u8 colNum, u8 whereToPlace);
+void drawMapRow(u8 mapNum,u8 rowNum, u8 whereToPlace);
 u8 checkPlayerBGCollision(void);
 u8 checkShotBGCollision(PROJECTILE shot);
 void setPlayerStartingPoint(u8 location);
@@ -47,11 +60,13 @@ void main(void) {
 	SysSetSystemFont();
 	InstallTileSetAt(tiles,sizeof(tiles)/2,TILEMAP_OFFSET);
 	initGame();
+	// switchScreens(0);
+	//switchScreens(2);
 
 	while (1) {
 		handlePlayerMovement();
 		handlePlayerShot();	
-		animatePlayerMovement();	
+		animatePlayerMovement();
 		
 		SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette); //draw player projectile 
 		SetSprite(robotShot.spriteID,TILEMAP_OFFSET+robotShot.tileNum,0,robotShot.xPos,robotShot.yPos,robotShot.palette); //draw robot projectile
@@ -91,18 +106,16 @@ void main(void) {
 void initGame() {
 	ClearScreen(SCR_1_PLANE);
 	ClearScreen(SCR_2_PLANE);
+	scrollXPos=0;
+	scrollYPos=0;
 	SetBackgroundColour(RGB(0, 0, 0));
 	SetPalette(SCR_2_PLANE, 0, 0, RGB(3,2,9), RGB(0,0,0), RGB(0,0,0));
 	SetPalette(SCR_1_PLANE, 0, 0, RGB(15,15,15), RGB(15,15,15), RGB(15,15,15));
 	SetPalette(SPRITE_PLANE, 0, 0, RGB(15,15,15), RGB(15,0,2), RGB(15,15,0)); //player palette
 	SetPalette(SPRITE_PLANE,1,0,RGB(0,15,0),RGB(15,15,0),RGB(15,15,15)); //robot palette
-	SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
-	SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //second sprite is linked to the first one
-	SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
 	
 	player.spriteID=0;
 	player.tileNum=playerStandingL;
-	setPlayerStartingPoint(0);
 	player.palette=0;
 	player.direction=4;
 	lives=3;
@@ -132,28 +145,50 @@ void initGame() {
 	robotShot.hasBeenFired=0;
 	
 	SeedRandom();
-	switchScreens(GetRandom(3));
+	switchScreens(GetRandom(4));
 	spawnRobots(numRobots);
 	currentTile=0;
 	slowCounter=0;
+	SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
+	SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //second sprite is linked to the first one
+	SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
 	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
 	PrintString(SCR_1_PLANE,0,0,16,"Score:");
 }
 
 void drawMap(u8 mapNum) {
+	u8 i,j;
 	for (i=0; i < MAP_SIZE_X;++i) {
 		for (j=0; j < MAP_SIZE_Y;++j) {
 			PutTile(SCR_2_PLANE,0,i,j,TILEMAP_OFFSET+maps[mapNum][j][i]);
 		}
 	}	
 }
+
+void drawMapColumn(u8 mapNum, u8 colNum, u8 whereToPlace) {
+	u8 i;
+	u8 rowToPlaceAt=scrollYPos>>3;
+	for (i=rowToPlaceAt; i != MAP_SIZE_Y+rowToPlaceAt+1;++i) {
+		PutTile(SCR_2_PLANE,0,whereToPlace,i&31,TILEMAP_OFFSET+maps[mapNum][i-rowToPlaceAt][colNum]);
+	}
+}
+
+void drawMapRow(u8 mapNum, u8 rowNum, u8 whereToPlace) {
+	u8 i;
+	u8 colToPlaceAt=scrollXPos>>3;
+	for (i=colToPlaceAt; i < MAP_SIZE_X+colToPlaceAt+1;++i) {
+		PutTile(SCR_2_PLANE,0,i&31,whereToPlace,TILEMAP_OFFSET+maps[mapNum][rowNum][i-colToPlaceAt]);
+	}
+}
+
 u8 checkPlayerBGCollision() {
-	GetTile(SCR_2_PLANE,NULL,(player.xPos+4)>>3,(player.yPos+8)>>3,&currentTile); //collision detection
+	GetTile(SCR_2_PLANE,NULL,((player.xPos+4)+scrollXPos)>>3,((player.yPos+8)+scrollYPos)>>3,&currentTile); //collision detection
+
 	return (currentTile-TILEMAP_OFFSET)!=blank; //1 if collision, 0 if not
 }
 
 u8 checkShotBGCollision(PROJECTILE shot) {
-	GetTile(SCR_2_PLANE,NULL,(shot.xPos+4)>>3,(shot.yPos+4)>>3,&currentTile); //collision detection
+	GetTile(SCR_2_PLANE,NULL,(shot.xPos+4)+scrollXPos>>3,(shot.yPos+4)+scrollYPos>>3,&currentTile); //collision detection
 	return (currentTile-TILEMAP_OFFSET)!=blank; //1 if collision, 0 if not	
 }
 
@@ -334,29 +369,88 @@ void handlePlayerShot() {
 
 void switchScreens(u16 direction) {
 	//direction: 0: left exit, 1: top exit, 2: right exit, 3: bottom exit
-	
+	u8 tileNum,tileCount,mapNum,endNum,i;
 	ClearScreen(SCR_1_PLANE);
-	ClearScreen(SCR_2_PLANE);
+	
 	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
 	PrintString(SCR_1_PLANE,0,0,16,"Score:");
 	
 	
 	SeedRandom(); //seed rng
 	switch(direction) {
-		case 0:
-		drawMap(sideEnterMaps[GetRandom(3)]);
+		case 0: //left
+		tileNum=scrollXPos>>3;
+		tileCount=0;
+		mapNum=sideEnterMaps[GetRandom(4)];
+		endNum=scrollXPos-161;
+		//drawMap(mapNum);
+		for (i=scrollXPos;i != endNum; --i) {
+			if ((i>>3)<<3==i) { //prob a better way to do this, but still more efficient than mod 8
+				--tileNum;
+				drawMapColumn(mapNum, (19-tileCount),tileNum&31);
+				++tileCount;
+			}
+			ShiftScroll(SCR_2_PLANE,i,scrollYPos);
+			scrollXPos=i;
+			WaitVsync(); //waits a frame
+		//	PrintNumber(SCR_1_PLANE,0,0,10,scrollXPos,3);
+		}
 		setPlayerStartingPoint(2);
 		break;
-		case 1:
-		drawMap(bottomEnterMaps[GetRandom(5)]);
+		case 1: //up
+		tileNum=scrollYPos>>3;
+		mapNum=bottomEnterMaps[GetRandom(6)];
+		tileCount=0;
+		endNum=scrollYPos-153; 
+		for (i=scrollYPos;i !=endNum; --i) {
+			if ((i>>3)<<3==i) {
+				--tileNum;
+				drawMapRow(mapNum, (18-tileCount),tileNum&31);
+				++tileCount;
+			}
+			ShiftScroll(SCR_2_PLANE,scrollXPos,i);
+			scrollYPos=i;
+			WaitVsync();
+		//	PrintNumber(SCR_1_PLANE,0,0,10,scrollYPos,3);
+		}
+		
 		setPlayerStartingPoint(3);
 		break;
-		case 2:
-		drawMap(sideEnterMaps[GetRandom(3)]);
-		setPlayerStartingPoint(0);
+		case 2: //right
+		tileNum=scrollXPos>>3;
+		tileCount=0;
+		mapNum=sideEnterMaps[GetRandom(4)];
+		endNum=scrollXPos+161;
+		//drawMap(mapNum);
+		for (i=scrollXPos;i != endNum; ++i) {
+			if ((i>>3)<<3==i) {
+				++tileNum;
+				drawMapColumn(mapNum, tileCount,(tileNum+19)&31); //tilemap's 255x255 so can't be greater than 31 tiles
+				++tileCount;
+			}
+			ShiftScroll(SCR_2_PLANE,i,scrollYPos);
+			scrollXPos=i;
+			WaitVsync(); //waits a frame
+			//PrintNumber(SCR_1_PLANE,0,0,10,scrollXPos,3);
+		}
+		setPlayerStartingPoint(2);
 		break;
 		case 3:
-		drawMap(topEnterMaps[GetRandom(3)]);
+		tileNum=scrollYPos>>3;
+		tileCount=0;
+		mapNum=topEnterMaps[GetRandom(4)];
+		endNum=scrollYPos+153;
+		for (i=scrollYPos; i != endNum; ++i) {
+			if ((i>>3)<<3==i) {
+				++tileNum;
+				drawMapRow(mapNum, tileCount,(tileNum+18)&31);
+				++tileCount;
+			}
+			ShiftScroll(SCR_2_PLANE,scrollXPos,i);
+			scrollYPos=i;
+			WaitVsync();
+			//PrintNumber(SCR_1_PLANE,0,0,10,scrollYPos,3);
+		}
 		setPlayerStartingPoint(1);
 		break;
 	}
@@ -390,6 +484,7 @@ void handlePlayerDeath() { //todo: add death animation
 
 void initRobots() {
 #define NUM_PLAYER_SPRITES 3 //2 for player character, 1 for player projectile
+	u8 i;
 	for (i=0; i < MAX_NUM_ROBOTS; ++i) {
 		robots[i].spriteID=NUM_PLAYER_SPRITES+i*2; //i*2 because there's another sprite being used by the bottom of the robot
 		robots[i].tileNum=robotStanding1;
@@ -404,17 +499,20 @@ void initRobots() {
 void spawnRobots(u8 numRobots) {
 	u8 diffX;
 	u8 diffY;
+	u8 i;
 	diffX=255;
 	diffY=255;
-#define DISTANCE_FROM_PLAYER 25
+#define DISTANCE_FROM_PLAYER 50
 	SeedRandom();
+	
 	for (i=0; i < numRobots; ++i) {
 		do {  //robots shouldn't spawn inside walls
 			robots[i].xPos=GetRandom(130)+10; //between 10 and 140
 			robots[i].yPos=GetRandom(80)+10; //between 10 and 90
 			diffX=GetDifference(robots[i].xPos,player.xPos);
 			diffY=GetDifference(robots[i].yPos,player.yPos);
-		} while (checkRobotBGCollision(robots[i]) && diffX > DISTANCE_FROM_PLAYER && diffY > DISTANCE_FROM_PLAYER);
+			//kinda messy but putting GetDifference in the while() statement won't compile for some reason
+		} while (checkRobotBGCollision(robots[i]) && diffX > DISTANCE_FROM_PLAYER && diffY > DISTANCE_FROM_PLAYER); 
 		
 		robots[i].isAlive=1;
 		numRobotsOnField=numRobots;
@@ -422,11 +520,12 @@ void spawnRobots(u8 numRobots) {
 }
 
 u8 checkRobotBGCollision(SPRITE robot) {
-	GetTile(SCR_2_PLANE,NULL,(robot.xPos+4)>>3,(robot.yPos+4)>>3,&currentTile); //collision detection
+	GetTile(SCR_2_PLANE,NULL,((robot.xPos+4)+scrollXPos)>>3,((robot.yPos+4)+scrollYPos)>>3,&currentTile); //collision detection
 	return (currentTile-TILEMAP_OFFSET)!=blank; //1 if collision, 0 if not
 }
 
 void drawRobots(u8 numRobots) {
+	u8 i;
 	for (i=0; i < numRobots; ++i) {
 		SetSprite(robots[i].spriteID,TILEMAP_OFFSET+robots[i].tileNum,0,robots[i].xPos,robots[i].yPos,robots[i].palette);
 		SetSprite(robots[i].spriteID+1,TILEMAP_OFFSET+robots[i].tileNum+1,1,0,8,robots[i].palette);
@@ -435,6 +534,7 @@ void drawRobots(u8 numRobots) {
 
 void animateRobots(u8 numRobots) {
 #define ROBOT_STANDING_ANIMATION_DELAY 5
+	u8 i;
 	if (robotStandingAnimCounter==ROBOT_STANDING_ANIMATION_DELAY) {  
 		for (i=0; i < numRobots; ++i) {
 			if (!robots[i].isMoving) {
@@ -451,6 +551,7 @@ void animateRobots(u8 numRobots) {
 }
 
 void handleRobotShotCollision(PROJECTILE* shot) {
+	u8 i;
 	for (i=0; i < numRobots; ++i) {
 		if (robots[i].xPos !=0) { //if robot is on the playfield
 			if ((shot->xPos+4) > robots[i].xPos && (shot->xPos+5) < robots[i].xPos+9) {
@@ -474,6 +575,7 @@ void despawnRobot(SPRITE* robot) {
 	if (numRobotsOnField==0) {
 		PrintString(SCR_1_PLANE,0,6,4,"Bonus: ");
 		PrintNumber(SCR_1_PLANE,0,11,4,numRobots*10,3);
+		score+=numRobots*10;
 	}
 	
 }
@@ -551,6 +653,7 @@ void moveRobot(SPRITE* robot, u8 speed) { //valid speed values are 1-5
 		robotWalkingAnimCounter++;
 }
 void handleRobotMovement(u8 speed) {
+	u8 i;
 	if (!isRobotMoving) {				//if a robot isn't moving, set the closest one to the player moving
 	
 		u8 closestRobot=0;

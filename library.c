@@ -250,9 +250,10 @@ void PutTile(u8 Plane, u8 Palette, u8 XPos, u8 YPos, u16 TileNo) {
 //////////////////////////////////////////////////////////////////////////////
    u16 * ScreenPlane1 = SCROLL_PLANE_1;
    u16 * ScreenPlane2 = SCROLL_PLANE_2;
+   u16 Offset,Value;
 
-   u16 Offset = ((u16)YPos * 32) + XPos;
-   u16 Value = TileNo + ((u16)Palette << 9);
+   Offset = ((u16)YPos * 32) + XPos;
+   Value = TileNo + ((u16)Palette << 9);
 
    switch(Plane)
    {

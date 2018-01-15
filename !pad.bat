@@ -2,4 +2,4 @@
 
 path=%path%;%NGPC_DEV%\T900\bin
 
-pad.exe out.ngp 524288
+pad.exe out.ngp 131072
