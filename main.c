@@ -43,6 +43,7 @@ void handlePlayerShot(void);
 void handlePlayerShotCollision(PROJECTILE* shot);
 void handlePlayerDeath(void);
 void switchScreens(u16 direction);
+void quickSwitchScreens(u16 direction);
 void initRobots(void);
 void spawnRobots(u8 numRobots);
 u8 checkRobotBGCollision(SPRITE robot);
@@ -73,12 +74,12 @@ void main(void) {
 		SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette); //draw player sprite
 		SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //draw bottom player sprite
 		
-		handlePlayerShotCollision(&robotShot);
-		handleRobotShotCollision(&playerShot);
+	//	handlePlayerShotCollision(&robotShot);
+	//	handleRobotShotCollision(&playerShot);
 			
 		animateRobots(numRobots);
 		drawRobots(numRobots);
-		handleRobotMovement(3);
+	//	handleRobotMovement(3);
 
 		//movement between screens
 		if (player.xPos==0) { //exit to the left
@@ -145,7 +146,7 @@ void initGame() {
 	robotShot.hasBeenFired=0;
 	
 	SeedRandom();
-	switchScreens(GetRandom(4));
+	quickSwitchScreens(GetRandom(4));
 	spawnRobots(numRobots);
 	currentTile=0;
 	slowCounter=0;
@@ -367,10 +368,19 @@ void handlePlayerShot() {
 		playerShot.hasBeenFired=0;
 }
 
+
+
 void switchScreens(u16 direction) {
 	//direction: 0: left exit, 1: top exit, 2: right exit, 3: bottom exit
 	u8 tileNum,tileCount,mapNum,endNum,i;
 	ClearScreen(SCR_1_PLANE);
+	
+	//move robots offscreen
+	for (i=0; i < numRobots; ++i)
+		robots[i].xPos=200;
+	robotShot.xPos=200;
+	robotShot.hasBeenFired=0;
+	drawRobots(numRobots);
 	
 	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
 	PrintString(SCR_1_PLANE,0,0,16,"Score:");
@@ -384,6 +394,7 @@ void switchScreens(u16 direction) {
 		mapNum=sideEnterMaps[GetRandom(4)];
 		endNum=scrollXPos-161;
 		//drawMap(mapNum);
+		player.xPos-=15;
 		for (i=scrollXPos;i != endNum; --i) {
 			if ((i>>3)<<3==i) { //prob a better way to do this, but still more efficient than mod 8
 				--tileNum;
@@ -392,6 +403,8 @@ void switchScreens(u16 direction) {
 			}
 			ShiftScroll(SCR_2_PLANE,i,scrollYPos);
 			scrollXPos=i;
+			++player.xPos; //scroll player with the screen
+			SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 			WaitVsync(); //waits a frame
 		//	PrintNumber(SCR_1_PLANE,0,0,10,scrollXPos,3);
 		}
@@ -402,6 +415,7 @@ void switchScreens(u16 direction) {
 		mapNum=bottomEnterMaps[GetRandom(6)];
 		tileCount=0;
 		endNum=scrollYPos-153; 
+		player.yPos-=55;
 		for (i=scrollYPos;i !=endNum; --i) {
 			if ((i>>3)<<3==i) {
 				--tileNum;
@@ -410,6 +424,8 @@ void switchScreens(u16 direction) {
 			}
 			ShiftScroll(SCR_2_PLANE,scrollXPos,i);
 			scrollYPos=i;
+			++player.yPos;
+			SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 			WaitVsync();
 		//	PrintNumber(SCR_1_PLANE,0,0,10,scrollYPos,3);
 		}
@@ -421,6 +437,7 @@ void switchScreens(u16 direction) {
 		tileCount=0;
 		mapNum=sideEnterMaps[GetRandom(4)];
 		endNum=scrollXPos+161;
+		player.xPos+=15;
 		//drawMap(mapNum);
 		for (i=scrollXPos;i != endNum; ++i) {
 			if ((i>>3)<<3==i) {
@@ -430,16 +447,20 @@ void switchScreens(u16 direction) {
 			}
 			ShiftScroll(SCR_2_PLANE,i,scrollYPos);
 			scrollXPos=i;
+			
+			--player.xPos; 
+			SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 			WaitVsync(); //waits a frame
 			//PrintNumber(SCR_1_PLANE,0,0,10,scrollXPos,3);
 		}
-		setPlayerStartingPoint(2);
+		setPlayerStartingPoint(0);
 		break;
-		case 3:
+		case 3: //down
 		tileNum=scrollYPos>>3;
 		tileCount=0;
 		mapNum=topEnterMaps[GetRandom(4)];
 		endNum=scrollYPos+153;
+		player.yPos+=55;
 		for (i=scrollYPos; i != endNum; ++i) {
 			if ((i>>3)<<3==i) {
 				++tileNum;
@@ -448,6 +469,8 @@ void switchScreens(u16 direction) {
 			}
 			ShiftScroll(SCR_2_PLANE,scrollXPos,i);
 			scrollYPos=i;
+			--player.yPos;
+			SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 			WaitVsync();
 			//PrintNumber(SCR_1_PLANE,0,0,10,scrollYPos,3);
 		}
@@ -456,6 +479,43 @@ void switchScreens(u16 direction) {
 	}
 	spawnRobots(numRobots);
 }
+
+void quickSwitchScreens(u16 direction) {
+	//like switchScreens but without the scrolling transition (used for player death/new game)
+	//direction: 0: left exit, 1: top exit, 2: right exit, 3: bottom exit
+	
+	ClearScreen(SCR_1_PLANE);
+	ClearScreen(SCR_2_PLANE);
+	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
+	PrintString(SCR_1_PLANE,0,0,16,"Score:");
+	
+	
+	SeedRandom(); //seed rng
+	switch(direction) {
+		case 0:
+		drawMap(sideEnterMaps[GetRandom(4)]);
+		setPlayerStartingPoint(2);
+		break;
+		case 1:
+		drawMap(bottomEnterMaps[GetRandom(6)]);
+		setPlayerStartingPoint(3);
+		break;
+		case 2:
+		drawMap(sideEnterMaps[GetRandom(4)]);
+		setPlayerStartingPoint(0);
+		break;
+		case 3:
+		drawMap(topEnterMaps[GetRandom(4)]);
+		setPlayerStartingPoint(1);
+		break;
+	}
+	scrollXPos=0;
+	scrollYPos=0;
+	ShiftScroll(SCR_2_PLANE, scrollXPos, scrollYPos);
+	
+	spawnRobots(numRobots);
+}
+
 
 void handlePlayerShotCollision(PROJECTILE* shot) {
 	if ((shot->xPos+4) > player.xPos && (shot->xPos+5) < player.xPos+9) {
@@ -469,7 +529,7 @@ void handlePlayerShotCollision(PROJECTILE* shot) {
 void handlePlayerDeath() { //todo: add death animation
 	if (lives!=0) {
 		--lives;
-		switchScreens(GetRandom(3));
+		quickSwitchScreens(GetRandom(3));
 	}
 	else {
 		tempScreenCounter=100;
