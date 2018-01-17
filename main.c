@@ -30,10 +30,13 @@ PROJECTILE robotShot;
 #define MAX_NUM_ROBOTS 10
 SPRITE robots[MAX_NUM_ROBOTS];
 
+void test(void);
 void initGame(void);
 void drawMap(u8 mapNum);
 void drawMapColumn(u8 mapNum,u8 colNum, u8 whereToPlace);
 void drawMapRow(u8 mapNum,u8 rowNum, u8 whereToPlace);
+void clearMapColumn(u8 whereToPlace);
+void clearMapRow(u8 whereToPlace);
 u8 checkPlayerBGCollision(void);
 u8 checkShotBGCollision(PROJECTILE shot);
 void setPlayerStartingPoint(u8 location);
@@ -60,47 +63,65 @@ void main(void) {
 	InitNGPC();
 	SysSetSystemFont();
 	InstallTileSetAt(tiles,sizeof(tiles)/2,TILEMAP_OFFSET);
+	// test();
 	initGame();
-	// switchScreens(0);
+//	switchScreens(3);
 	//switchScreens(2);
 
 	while (1) {
-		handlePlayerMovement();
-		handlePlayerShot();	
-		animatePlayerMovement();
-		
-		SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette); //draw player projectile 
-		SetSprite(robotShot.spriteID,TILEMAP_OFFSET+robotShot.tileNum,0,robotShot.xPos,robotShot.yPos,robotShot.palette); //draw robot projectile
-		SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette); //draw player sprite
-		SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //draw bottom player sprite
-		
-	//	handlePlayerShotCollision(&robotShot);
-	//	handleRobotShotCollision(&playerShot);
-			
-		animateRobots(numRobots);
-		drawRobots(numRobots);
-	//	handleRobotMovement(3);
-
-		//movement between screens
-		if (player.xPos==0) { //exit to the left
+		if (JOYPAD & J_LEFT)
 			switchScreens(0);
-		}
-		else if (player.xPos==152) { //exit to the right
+		if (JOYPAD & J_RIGHT)
 			switchScreens(2);
-		}
-		else if (player.yPos==250) { //exit to the top
+		if (JOYPAD & J_UP)
 			switchScreens(1);
-		}
-		else if (player.yPos==110) { //exit to the bottom
+		if (JOYPAD & J_DOWN)
 			switchScreens(3);
-		}
+						
+		// handlePlayerMovement();
+		// handlePlayerShot();	
+		// animatePlayerMovement();
 		
-		//show lives and score
-		PrintNumber(SCR_1_PLANE,0,6,15,lives,1);
-		PrintNumber(SCR_1_PLANE,0,6,16,score,GetNumDigits(score));
+		// SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette); //draw player projectile 
+		// SetSprite(robotShot.spriteID,TILEMAP_OFFSET+robotShot.tileNum,0,robotShot.xPos,robotShot.yPos,robotShot.palette); //draw robot projectile
+		// SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette); //draw player sprite
+		// SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //draw bottom player sprite
+		
+		// handlePlayerShotCollision(&robotShot);
+		// handleRobotShotCollision(&playerShot);
+			
+		// animateRobots(numRobots);
+		// drawRobots(numRobots);
+		// handleRobotMovement(3);
+
+		// //movement between screens
+		// if (player.xPos==0) { //exit to the left
+			// switchScreens(0);
+		// }
+		// else if (player.xPos==152) { //exit to the right
+			// switchScreens(2);
+		// }
+		// else if (player.yPos==250) { //exit to the top
+			// switchScreens(1);
+		// }
+		// else if (player.yPos==110) { //exit to the bottom
+			// switchScreens(3);
+		// }
+		
+		// //show lives and score
+		// PrintNumber(SCR_1_PLANE,0,6,15,lives,1);
+		// PrintNumber(SCR_1_PLANE,0,6,16,score,GetNumDigits(score));
 		
 		WaitVsync();
 		
+	}
+}
+
+void test() {
+	u8 i;
+	ClearScreen(SCR_2_PLANE);
+	for (i=0; i < 18;i++) {
+		drawMapRow(0,i,i);
 	}
 }
 
@@ -168,18 +189,34 @@ void drawMap(u8 mapNum) {
 
 void drawMapColumn(u8 mapNum, u8 colNum, u8 whereToPlace) {
 	u8 i;
-	u8 rowToPlaceAt=scrollYPos>>3;
-	for (i=rowToPlaceAt; i != MAP_SIZE_Y+rowToPlaceAt+1;++i) {
-		PutTile(SCR_2_PLANE,0,whereToPlace,i&31,TILEMAP_OFFSET+maps[mapNum][i-rowToPlaceAt][colNum]);
+	u8 scrollOffset=scrollYPos>>3;
+	for (i=scrollOffset; i != MAP_SIZE_Y+scrollOffset;++i) {
+		PutTile(SCR_2_PLANE,0,whereToPlace,i&31,TILEMAP_OFFSET+maps[mapNum][i-scrollOffset][colNum]);
 	}
 }
 
 void drawMapRow(u8 mapNum, u8 rowNum, u8 whereToPlace) {
 	u8 i;
-	u8 colToPlaceAt=scrollXPos>>3;
-	for (i=colToPlaceAt; i < MAP_SIZE_X+colToPlaceAt+1;++i) {
-		PutTile(SCR_2_PLANE,0,i&31,whereToPlace,TILEMAP_OFFSET+maps[mapNum][rowNum][i-colToPlaceAt]);
+	u8 scrollOffset=scrollXPos>>3;
+	for (i=scrollOffset; i < MAP_SIZE_X+scrollOffset;++i) {
+		if (rowNum < MAP_SIZE_Y+scrollOffset) //don't want to draw garbage from the next map (or uninitialized vram...)
+			PutTile(SCR_2_PLANE,0,i&31,whereToPlace,TILEMAP_OFFSET+maps[mapNum][rowNum][i-scrollOffset]);
 	}
+}
+
+void clearMapColumn(u8 whereToPlace) {
+	u8 i;
+	u8 scrollOffset=scrollXPos>>3;
+	for (i=scrollOffset; i < MAP_SIZE_Y+scrollOffset;++i) {
+		PutTile(SCR_2_PLANE,0,whereToPlace,i&31,TILEMAP_OFFSET+blank);
+	}
+}
+
+void clearMapRow(u8 whereToPlace) {
+	u8 i;
+	u8 scrollOffset=scrollXPos>>3;
+	for (i=scrollOffset; i < MAP_SIZE_X+scrollOffset;++i)
+		PutTile(SCR_2_PLANE,0,i&31,whereToPlace,TILEMAP_OFFSET+blank);
 }
 
 u8 checkPlayerBGCollision() {
@@ -372,7 +409,7 @@ void handlePlayerShot() {
 
 void switchScreens(u16 direction) {
 	//direction: 0: left exit, 1: top exit, 2: right exit, 3: bottom exit
-	u8 tileNum,tileCount,mapNum,endNum,i;
+	u8 tileNum,tileCount,mapNum,endNum,i,j;
 	ClearScreen(SCR_1_PLANE);
 	
 	//move robots offscreen
@@ -381,10 +418,10 @@ void switchScreens(u16 direction) {
 	robotShot.xPos=200;
 	robotShot.hasBeenFired=0;
 	drawRobots(numRobots);
+	SetSprite(robotShot.spriteID,TILEMAP_OFFSET+robotShot.tileNum,0,robotShot.xPos,robotShot.yPos,robotShot.palette);
 	
 	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
 	PrintString(SCR_1_PLANE,0,0,16,"Score:");
-	
 	
 	SeedRandom(); //seed rng
 	switch(direction) {
@@ -399,6 +436,7 @@ void switchScreens(u16 direction) {
 			if ((i>>3)<<3==i) { //prob a better way to do this, but still more efficient than mod 8
 				--tileNum;
 				drawMapColumn(mapNum, (19-tileCount),tileNum&31);
+				clearMapColumn(((i>>3)+20)&31);
 				++tileCount;
 			}
 			ShiftScroll(SCR_2_PLANE,i,scrollYPos);
@@ -420,6 +458,7 @@ void switchScreens(u16 direction) {
 			if ((i>>3)<<3==i) {
 				--tileNum;
 				drawMapRow(mapNum, (18-tileCount),tileNum&31);
+				clearMapRow(((i>>3)+19)&31);
 				++tileCount;
 			}
 			ShiftScroll(SCR_2_PLANE,scrollXPos,i);
@@ -443,6 +482,7 @@ void switchScreens(u16 direction) {
 			if ((i>>3)<<3==i) {
 				++tileNum;
 				drawMapColumn(mapNum, tileCount,(tileNum+19)&31); //tilemap's 255x255 so can't be greater than 31 tiles
+				clearMapColumn(((i>>3)-1)&31);
 				++tileCount;
 			}
 			ShiftScroll(SCR_2_PLANE,i,scrollYPos);
@@ -465,6 +505,7 @@ void switchScreens(u16 direction) {
 			if ((i>>3)<<3==i) {
 				++tileNum;
 				drawMapRow(mapNum, tileCount,(tileNum+18)&31);
+				clearMapRow(((i>>3)-1)&31); //clear row being scrolled offscreen
 				++tileCount;
 			}
 			ShiftScroll(SCR_2_PLANE,scrollXPos,i);
@@ -477,6 +518,7 @@ void switchScreens(u16 direction) {
 		setPlayerStartingPoint(1);
 		break;
 	}
+	
 	spawnRobots(numRobots);
 }
 
