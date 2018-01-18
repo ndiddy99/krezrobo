@@ -63,65 +63,45 @@ void main(void) {
 	InitNGPC();
 	SysSetSystemFont();
 	InstallTileSetAt(tiles,sizeof(tiles)/2,TILEMAP_OFFSET);
-	// test();
 	initGame();
-//	switchScreens(3);
-	//switchScreens(2);
 
 	while (1) {
-		if (JOYPAD & J_LEFT)
-			switchScreens(0);
-		if (JOYPAD & J_RIGHT)
-			switchScreens(2);
-		if (JOYPAD & J_UP)
-			switchScreens(1);
-		if (JOYPAD & J_DOWN)
-			switchScreens(3);
-						
-		// handlePlayerMovement();
-		// handlePlayerShot();	
-		// animatePlayerMovement();
+		handlePlayerMovement();
+		handlePlayerShot();	
+		animatePlayerMovement();
 		
-		// SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette); //draw player projectile 
-		// SetSprite(robotShot.spriteID,TILEMAP_OFFSET+robotShot.tileNum,0,robotShot.xPos,robotShot.yPos,robotShot.palette); //draw robot projectile
-		// SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette); //draw player sprite
-		// SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //draw bottom player sprite
+		SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette); //draw player projectile 
+		SetSprite(robotShot.spriteID,TILEMAP_OFFSET+robotShot.tileNum,0,robotShot.xPos,robotShot.yPos,robotShot.palette); //draw robot projectile
+		SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette); //draw player sprite
+		SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //draw bottom player sprite
 		
-		// handlePlayerShotCollision(&robotShot);
-		// handleRobotShotCollision(&playerShot);
+		handlePlayerShotCollision(&robotShot);
+		handleRobotShotCollision(&playerShot);
 			
-		// animateRobots(numRobots);
-		// drawRobots(numRobots);
-		// handleRobotMovement(3);
+		animateRobots(numRobots);
+		drawRobots(numRobots);
+		handleRobotMovement(3);
 
-		// //movement between screens
-		// if (player.xPos==0) { //exit to the left
-			// switchScreens(0);
-		// }
-		// else if (player.xPos==152) { //exit to the right
-			// switchScreens(2);
-		// }
-		// else if (player.yPos==250) { //exit to the top
-			// switchScreens(1);
-		// }
-		// else if (player.yPos==110) { //exit to the bottom
-			// switchScreens(3);
-		// }
+		//movement between screens
+		if (player.xPos==0) { //exit to the left
+			switchScreens(0);
+		}
+		else if (player.xPos==152) { //exit to the right
+			switchScreens(2);
+		}
+		else if (player.yPos==250) { //exit to the top
+			switchScreens(1);
+		}
+		else if (player.yPos==110) { //exit to the bottom
+			switchScreens(3);
+		}
 		
-		// //show lives and score
-		// PrintNumber(SCR_1_PLANE,0,6,15,lives,1);
-		// PrintNumber(SCR_1_PLANE,0,6,16,score,GetNumDigits(score));
+		//show lives and score
+		PrintNumber(SCR_1_PLANE,0,6,15,lives,1);
+		PrintNumber(SCR_1_PLANE,0,6,16,score,GetNumDigits(score));
 		
 		WaitVsync();
 		
-	}
-}
-
-void test() {
-	u8 i;
-	ClearScreen(SCR_2_PLANE);
-	for (i=0; i < 18;i++) {
-		drawMapRow(0,i,i);
 	}
 }
 
@@ -199,25 +179,24 @@ void drawMapRow(u8 mapNum, u8 rowNum, u8 whereToPlace) {
 	u8 i;
 	u8 scrollOffset=scrollXPos>>3;
 	for (i=scrollOffset; i < MAP_SIZE_X+scrollOffset;++i) {
-		if (rowNum < MAP_SIZE_Y+scrollOffset) //don't want to draw garbage from the next map (or uninitialized vram...)
+		if (rowNum < MAP_SIZE_Y) //don't want to draw garbage from the next map (or uninitialized vram...)
 			PutTile(SCR_2_PLANE,0,i&31,whereToPlace,TILEMAP_OFFSET+maps[mapNum][rowNum][i-scrollOffset]);
 	}
 }
 
 void clearMapColumn(u8 whereToPlace) {
 	u8 i;
-	u8 scrollOffset=scrollXPos>>3;
-	for (i=scrollOffset; i < MAP_SIZE_Y+scrollOffset;++i) {
-		PutTile(SCR_2_PLANE,0,whereToPlace,i&31,TILEMAP_OFFSET+blank);
+	for (i=0; i < 32;++i) {
+		PutTile(SCR_2_PLANE,0,whereToPlace,i,TILEMAP_OFFSET+blank);
 	}
 }
 
 void clearMapRow(u8 whereToPlace) {
 	u8 i;
-	u8 scrollOffset=scrollXPos>>3;
-	for (i=scrollOffset; i < MAP_SIZE_X+scrollOffset;++i)
-		PutTile(SCR_2_PLANE,0,i&31,whereToPlace,TILEMAP_OFFSET+blank);
+	for (i=0; i < 32;++i)
+		PutTile(SCR_2_PLANE,0,i,whereToPlace,TILEMAP_OFFSET+blank);
 }
+
 
 u8 checkPlayerBGCollision() {
 	GetTile(SCR_2_PLANE,NULL,((player.xPos+4)+scrollXPos)>>3,((player.yPos+8)+scrollYPos)>>3,&currentTile); //collision detection
@@ -444,7 +423,7 @@ void switchScreens(u16 direction) {
 			++player.xPos; //scroll player with the screen
 			SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 			WaitVsync(); //waits a frame
-		//	PrintNumber(SCR_1_PLANE,0,0,10,scrollXPos,3);
+			PrintNumber(SCR_1_PLANE,0,0,10,scrollXPos,3);
 		}
 		setPlayerStartingPoint(2);
 		break;
@@ -463,10 +442,10 @@ void switchScreens(u16 direction) {
 			}
 			ShiftScroll(SCR_2_PLANE,scrollXPos,i);
 			scrollYPos=i;
-			++player.yPos;
+			++player.yPos; //scroll player sprite with the screen
 			SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 			WaitVsync();
-		//	PrintNumber(SCR_1_PLANE,0,0,10,scrollYPos,3);
+			PrintNumber(SCR_1_PLANE,0,0,11,scrollYPos,3);
 		}
 		
 		setPlayerStartingPoint(3);
@@ -491,7 +470,7 @@ void switchScreens(u16 direction) {
 			--player.xPos; 
 			SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 			WaitVsync(); //waits a frame
-			//PrintNumber(SCR_1_PLANE,0,0,10,scrollXPos,3);
+			PrintNumber(SCR_1_PLANE,0,0,10,scrollXPos,3);
 		}
 		setPlayerStartingPoint(0);
 		break;
@@ -513,7 +492,7 @@ void switchScreens(u16 direction) {
 			--player.yPos;
 			SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 			WaitVsync();
-			//PrintNumber(SCR_1_PLANE,0,0,10,scrollYPos,3);
+			PrintNumber(SCR_1_PLANE,0,0,11,scrollYPos,3);
 		}
 		setPlayerStartingPoint(1);
 		break;
