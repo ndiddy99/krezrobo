@@ -10,10 +10,10 @@
 /*
 -----todo list-----
 title screen
-player death animation
 robot death animation
 level difficulty progression
 sound
+evil otto
 
 */
 
@@ -423,7 +423,6 @@ void switchScreens(u16 direction) {
 			++player.xPos; //scroll player with the screen
 			SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 			WaitVsync(); //waits a frame
-			PrintNumber(SCR_1_PLANE,0,0,10,scrollXPos,3);
 		}
 		setPlayerStartingPoint(2);
 		break;
@@ -445,7 +444,6 @@ void switchScreens(u16 direction) {
 			++player.yPos; //scroll player sprite with the screen
 			SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 			WaitVsync();
-			PrintNumber(SCR_1_PLANE,0,0,11,scrollYPos,3);
 		}
 		
 		setPlayerStartingPoint(3);
@@ -470,7 +468,6 @@ void switchScreens(u16 direction) {
 			--player.xPos; 
 			SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 			WaitVsync(); //waits a frame
-			PrintNumber(SCR_1_PLANE,0,0,10,scrollXPos,3);
 		}
 		setPlayerStartingPoint(0);
 		break;
@@ -492,7 +489,6 @@ void switchScreens(u16 direction) {
 			--player.yPos;
 			SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette);
 			WaitVsync();
-			PrintNumber(SCR_1_PLANE,0,0,11,scrollYPos,3);
 		}
 		setPlayerStartingPoint(1);
 		break;
@@ -548,6 +544,35 @@ void handlePlayerShotCollision(PROJECTILE* shot) {
 }
 
 void handlePlayerDeath() { //todo: add death animation
+	u8 deathAnimCounter=50;
+	while (deathAnimCounter>0) {
+		if (deathAnimCounter & 1) {
+			switch (player.direction) {
+				case 0:
+				case 1:
+				case 7:
+				if (player.tileNum != playerStandingR)
+					player.tileNum=playerStandingR;
+				else
+					player.tileNum=playerDeadR;
+				break;
+				default:
+				if (player.tileNum != playerStandingL)
+					player.tileNum=playerStandingL;
+				else 
+					player.tileNum=playerDeadL;
+				break;
+			
+			}
+		}
+		handleRobotMovement(3);
+		SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette); //draw player sprite
+		SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //draw bottom player sprite
+		SetSprite(robotShot.spriteID,TILEMAP_OFFSET+robotShot.tileNum,0,robotShot.xPos,robotShot.yPos,robotShot.palette); //draw robot projectile
+		drawRobots(numRobots);
+		WaitVsync(); //wait 2 frames
+		--deathAnimCounter;
+	}
 	if (lives!=0) {
 		--lives;
 		quickSwitchScreens(GetRandom(3));
@@ -583,7 +608,7 @@ void spawnRobots(u8 numRobots) {
 	u8 i;
 	diffX=255;
 	diffY=255;
-#define DISTANCE_FROM_PLAYER 50
+#define DISTANCE_FROM_PLAYER 40
 	SeedRandom();
 	
 	for (i=0; i < numRobots; ++i) {
@@ -593,7 +618,7 @@ void spawnRobots(u8 numRobots) {
 			diffX=GetDifference(robots[i].xPos,player.xPos);
 			diffY=GetDifference(robots[i].yPos,player.yPos);
 			//kinda messy but putting GetDifference in the while() statement won't compile for some reason
-		} while (checkRobotBGCollision(robots[i]) && diffX > DISTANCE_FROM_PLAYER && diffY > DISTANCE_FROM_PLAYER); 
+		} while (checkRobotBGCollision(robots[i]) && diffX < DISTANCE_FROM_PLAYER && diffY < DISTANCE_FROM_PLAYER); 
 		
 		robots[i].isAlive=1;
 		numRobotsOnField=numRobots;
