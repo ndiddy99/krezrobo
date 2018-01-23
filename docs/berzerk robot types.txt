@@ -1,13 +1,13 @@
-yellow- don't fire, walk forward
-brown- fire slowly
-gray- fire medium, walk more often than brown/yellow
-green- fire medium, walk faster than yellow/brown/gray
-pink- walk same speed as green, fire fast
-blue- walk 1.5x green/blue, fire fast
-beige- walk 2x green/blue, fire fast
-purple- walk same speed as beige, fire 1.5x faster
+yellow- don't fire, walk forward (walk speed 1, fire speed 0)
+brown- fire slowly (walk speed 1, fire speed 1)
+green- fire medium, walk faster than yellow/brown/gray (walk speed 2, fire speed 1)
+pink- walk same speed as green, fire fast (walk speed 2, fire speed 2)
+blue- walk 1.5x green/blue, fire fast (walk speed 3, fire speed 2)
+beige- walk 2x green/blue, fire fast (walk speed 4, fire speed 2)
+purple- walk same speed as beige, fire 1.5x faster (walk speed 4, fire speed 3)
 
 scoring-
 50 points per robot killed
 if all robots in a room are killed, 10 bonus points per robot
 extra life at 1000 points
+
