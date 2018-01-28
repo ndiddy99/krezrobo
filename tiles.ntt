@@ -1,5 +1,5 @@
 ;// NeoTile: GroupWidth 1
-;// NeoTile: GroupHeight 2
+;// NeoTile: GroupHeight 1
 
 ;// NeoTile: TileColour0 255,255,255
 ;// NeoTile: TileColour1 0,0,0
@@ -654,4 +654,18 @@ robotDead:
 	DW 0000000000000000b
 	DW 0000000000000000b
 	DW 0000000000000000b
+
+;// NeoTile: TileColour0 255,255,255
+;// NeoTile: TileColour1 0,0,0
+;// NeoTile: TileColour2 80,80,80
+;// NeoTile: TileColour3 160,160,160
+otto:
+	DW 0000111111110000b
+	DW 0011111111111100b
+	DW 1111111111111111b
+	DW 1100001111000011b
+	DW 1111111111111111b
+	DW 1111000000001111b
+	DW 0011110000111100b
+	DW 0000111111110000b
 

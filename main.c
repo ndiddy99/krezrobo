@@ -19,11 +19,11 @@ evil otto
 
 #define TILEMAP_OFFSET 128 //offset in tilemap due to system font taking up first half
 u8 mapNum,slowCounter,numRobots,playerAnimCounter,robotStandingAnimCounter,robotWalkingAnimCounter,
-isRobotMoving,robotToMove,robotMotionDelay,robotWalkCounter,lives,tempScreenCounter,numRobotsOnField,
+isRobotMoving,robottomove,robotMotionDelay,robotWalkCounter,lives,tempScreenCounter,numRobotsOnField,
 scrollXPos,scrollYPos,hasPlayerMoved,level,robotSpeed,robotShotSpeed;
 u16 currentTile,score;
 
-SPRITE player;
+SPRITE player, evilOtto;
 PROJECTILE playerShot;
 PROJECTILE robotShot;
 #define MAX_NUM_ROBOTS 10
@@ -59,6 +59,7 @@ void setRobotDirection(SPRITE* robot);
 void moveRobot(SPRITE* robot,u8 speed);
 void handleRobotMovement(u8 speed);
 void shootPlayer(SPRITE robotShooting, u8 speed);
+void moveOtto(void);
 
 void main(void) {
 	InitNGPC();
@@ -73,6 +74,7 @@ void main(void) {
 		
 		SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette); //draw player projectile 
 		SetSprite(robotShot.spriteID,TILEMAP_OFFSET+robotShot.tileNum,0,robotShot.xPos,robotShot.yPos,robotShot.palette); //draw robot projectile
+		SetSprite(evilOtto.spriteID,TILEMAP_OFFSET+evilOtto.tileNum,0,evilOtto.xPos,evilOtto.yPos,evilOtto.palette); //draw otto
 		SetSprite(player.spriteID,TILEMAP_OFFSET+player.tileNum,0,player.xPos,player.yPos,player.palette); //draw player sprite
 		SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //draw bottom player sprite
 		
@@ -83,6 +85,7 @@ void main(void) {
 		animateRobots(numRobots);
 		drawRobots(numRobots);
 		handleRobotMovement(robotSpeed);
+		moveOtto();
 
 		//movement between screens
 		if (player.xPos==0) { //exit to the left
@@ -116,7 +119,7 @@ void initGame() {
 	SetPalette(SCR_2_PLANE, 0, 0, RGB(3,2,9), RGB(0,0,0), RGB(0,0,0));
 	SetPalette(SCR_1_PLANE, 0, 0, RGB(15,15,15), RGB(15,15,15), RGB(15,15,15));
 	SetPalette(SPRITE_PLANE, 0, 0, RGB(15,15,15), RGB(15,0,2), RGB(15,15,0)); //player palette
-	SetPalette(SPRITE_PLANE,1,0,RGB(12,10,8),RGB(15,15,0),RGB(15,15,15)); //robot palett
+	SetPalette(SPRITE_PLANE,1,0,RGB(12,10,8),RGB(15,15,0),RGB(15,9,0)); //robot/evilOtto palette
 	
 	player.spriteID=0;
 	player.tileNum=playerStandingL;
@@ -138,7 +141,7 @@ void initGame() {
 	robotStandingAnimCounter=0;
 	robotWalkingAnimCounter=0;
 	isRobotMoving=0;
-	robotToMove=0;
+	robottomove=0;
 	robotWalkCounter=0;
 	initRobots();
 	
@@ -148,6 +151,11 @@ void initGame() {
 	robotShot.yPos=0;
 	robotShot.palette=1;
 	robotShot.hasBeenFired=0;
+	
+	evilOtto.spriteID=robotShot.spriteID+1;
+	evilOtto.tileNum=otto;
+	evilOtto.palette=1;
+	evilOtto.direction=0;
 	
 	SeedRandom();
 	quickSwitchScreens(GetRandom(4));
@@ -505,7 +513,8 @@ void switchScreens(u16 direction) {
 	}
 	hasPlayerMoved=0;
 	spawnRobots(numRobots);
-	++level;
+	if (level < 255)
+		++level;
 	handleDifficulty(level);
 }
 
@@ -552,42 +561,42 @@ void handleDifficulty(u8 level) {
 		case 1:
 		robotSpeed=1;
 		robotShotSpeed=0;
-		SetPalette(SPRITE_PLANE,1,0,RGB(15,15,0),RGB(15,15,0),RGB(15,15,15)); //yellow
+		SetPalette(SPRITE_PLANE,1,0,RGB(15,15,0),RGB(15,15,0),RGB(15,9,0)); //yellow
 		break;
 		case 2:
 		case 3:
 		robotSpeed=1;
 		robotShotSpeed=1;
-		SetPalette(SPRITE_PLANE,1,0,RGB(12,10,8),RGB(15,15,0),RGB(15,15,15)); //brown
+		SetPalette(SPRITE_PLANE,1,0,RGB(12,10,8),RGB(15,15,0),RGB(15,9,0)); //brown
 		break;
 		case 4:
 		case 5:
 		robotSpeed=2;
 		robotShotSpeed=1;
-		SetPalette(SPRITE_PLANE,1,0,RGB(0,15,0),RGB(15,15,0),RGB(15,15,15)); //green
+		SetPalette(SPRITE_PLANE,1,0,RGB(0,15,0),RGB(15,15,0),RGB(15,9,0)); //green
 		break;
 		case 6:
 		case 7:
 		robotSpeed=2;
 		robotShotSpeed=2;
-		SetPalette(SPRITE_PLANE,1,0,RGB(15,6,11),RGB(15,15,0),RGB(15,15,15)); //pink
+		SetPalette(SPRITE_PLANE,1,0,RGB(15,6,11),RGB(15,15,0),RGB(15,9,0)); //pink
 		break;
 		case 8:
 		case 9:
 		robotSpeed=3;
 		robotShotSpeed=2;
-		SetPalette(SPRITE_PLANE,1,0,RGB(0,0,15),RGB(15,15,0),RGB(15,15,15)); //blue
+		SetPalette(SPRITE_PLANE,1,0,RGB(0,0,15),RGB(15,15,0),RGB(15,9,0)); //blue
 		break;
 		case 10:
 		case 11:
 		robotSpeed=4;
 		robotShotSpeed=2;
-		SetPalette(SPRITE_PLANE,1,0,RGB(14,14,13),RGB(15,15,0),RGB(15,15,15)); //beige
+		SetPalette(SPRITE_PLANE,1,0,RGB(14,14,13),RGB(15,15,0),RGB(15,9,0)); //beige
 		break;
 		default:
 		robotSpeed=4;
 		robotShotSpeed=3;
-		SetPalette(SPRITE_PLANE,1,0,RGB(13,7,13),RGB(15,15,0),RGB(15,15,15)); //purple
+		SetPalette(SPRITE_PLANE,1,0,RGB(13,7,13),RGB(15,15,0),RGB(15,9,0)); //purple
 		
 
 	}
@@ -845,16 +854,16 @@ void handleRobotMovement(u8 speed) {
 			}
 		}	
 		PrintNumber(SCR_1_PLANE,0,0,18,closestRobot,3);
-		robotToMove=closestRobot;
+		robottomove=closestRobot;
 		
-		robots[robotToMove].isMoving=1;
-		setRobotDirection(&robots[robotToMove]);
+		robots[robottomove].isMoving=1;
+		setRobotDirection(&robots[robottomove]);
 		isRobotMoving=1;
 	}
 	else {
 		 //otherwise move the robot currently moving
-		moveRobot(&robots[robotToMove],speed);
-		shootPlayer(robots[robotToMove], robotShotSpeed);
+		moveRobot(&robots[robottomove],speed);
+		shootPlayer(robots[robottomove], robotShotSpeed);
 		robotWalkCounter++;
 	}
 
@@ -862,7 +871,7 @@ void handleRobotMovement(u8 speed) {
 	if (robotWalkCounter==MAX_ROBOT_TICKS) { //if the same robot's walked for max # of "ticks", move another robot
 		isRobotMoving=0;
 		robotWalkCounter=0;
-		robots[robotToMove].isMoving=0;
+		robots[robottomove].isMoving=0;
 	}
 }
 
@@ -907,4 +916,44 @@ void shootPlayer(SPRITE robotShooting, u8 speed) {
 
 }
 
-
+void moveOtto(void) {
+	#define RETARGET_TIMEOUT 5
+	#define OTTO_SLOWDOWN_FACTOR 2
+	static u8 resetTargetTimer=RETARGET_TIMEOUT;
+	static u8 ottoMovementTimer=OTTO_SLOWDOWN_FACTOR;
+	static u8 ottoXTarget,ottoYTarget,isOttoMovingRight,isOttoMovingDown,initialXPos;
+	if (resetTargetTimer==0) {
+		if (evilOtto.xPos < player.xPos) {
+			ottoXTarget=evilOtto.xPos+5;
+			isOttoMovingRight=1;
+		}
+		else {
+			ottoXTarget=evilOtto.xPos-5;
+			isOttoMovingRight=0;
+		}
+		if (evilOtto.yPos < player.yPos) {
+			ottoYTarget=evilOtto.yPos+10;
+			isOttoMovingDown=1;
+		}
+		else {
+			ottoYTarget=evilOtto.yPos-10;
+			isOttoMovingDown=0;
+		}
+		resetTargetTimer=RETARGET_TIMEOUT;
+		initialXPos=evilOtto.xPos;
+	}
+	else if (ottoMovementTimer==0) {
+		if (isOttoMovingRight)
+			evilOtto.xPos+=2;
+		else
+			evilOtto.xPos-=2;
+		if (isOttoMovingDown)
+			evilOtto.yPos+=5;
+		else
+			evilOtto.yPos-=5;
+		resetTargetTimer--;
+		ottoMovementTimer=OTTO_SLOWDOWN_FACTOR;
+	}
+	else
+		ottoMovementTimer--;
+}
