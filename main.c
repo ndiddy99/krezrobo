@@ -10,9 +10,7 @@
 /*
 -----todo list-----
 title screen
-robot death animation
 sound
-evil otto
 
 */
 
@@ -571,7 +569,7 @@ void handleDifficulty(u8 level) {
 		robotSpeed=1;
 		robotShotSpeed=0;
 		SetPalette(SPRITE_PLANE,1,0,RGB(15,15,0),RGB(15,15,0),RGB(15,9,0)); //yellow
-		ottoMovementTimer=0*FRAMES_PER_SECOND; //15 seconds
+		ottoMovementTimer=15*FRAMES_PER_SECOND; //15 seconds
 		break;
 		case 2:
 		case 3:
@@ -934,9 +932,10 @@ void shootPlayer(SPRITE robotShooting, u8 speed) {
 void moveOtto() {
 	#define RETARGET_TIMEOUT 5
 	#define OTTO_SLOWDOWN_FACTOR 2
+	#define MAX_DELTA_Y 9
 	static u8 resetTargetTimer=RETARGET_TIMEOUT;
 	static u8 ottoSlowdownTimer=OTTO_SLOWDOWN_FACTOR;
-	static u8 ottoXTarget,ottoYTarget,isOttoMovingRight,isOttoMovingDown,initialXPos;
+	static u8 ottoXTarget,ottoYTarget,isOttoMovingRight,isOttoMovingDown;
 	if (resetTargetTimer==0) {
 		if (evilOtto.xPos < player.xPos) {
 			ottoXTarget=evilOtto.xPos+5;
@@ -951,14 +950,13 @@ void moveOtto() {
 		else
 			isOttoMovingDown=0;
 		resetTargetTimer=RETARGET_TIMEOUT;
-		initialXPos=evilOtto.xPos;
 	}
 	else if (ottoSlowdownTimer==0) {
 		if (isOttoMovingRight)
 			evilOtto.xPos+=1;
 		else
 			evilOtto.xPos-=1;
-		if (isOttoMovingDown)
+		if (isOttoMovingDown && evilOtto.yPos)
 			evilOtto.yPos+=3;
 		else
 			evilOtto.yPos-=3;
