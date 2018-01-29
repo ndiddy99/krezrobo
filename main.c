@@ -21,7 +21,7 @@ evil otto
 u8 mapNum,slowCounter,numRobots,playerAnimCounter,robotStandingAnimCounter,robotWalkingAnimCounter,
 isRobotMoving,robottomove,robotMotionDelay,robotWalkCounter,lives,tempScreenCounter,numRobotsOnField,
 scrollXPos,scrollYPos,hasPlayerMoved,level,robotSpeed,robotShotSpeed;
-u16 currentTile,score;
+u16 currentTile,score,ottoMovementTimer;
 
 SPRITE player, evilOtto;
 PROJECTILE playerShot;
@@ -60,6 +60,7 @@ void moveRobot(SPRITE* robot,u8 speed);
 void handleRobotMovement(u8 speed);
 void shootPlayer(SPRITE robotShooting, u8 speed);
 void moveOtto(void);
+void handleOttoMovement(void);
 
 void main(void) {
 	InitNGPC();
@@ -85,7 +86,7 @@ void main(void) {
 		animateRobots(numRobots);
 		drawRobots(numRobots);
 		handleRobotMovement(robotSpeed);
-		moveOtto();
+		handleOttoMovement();
 
 		//movement between screens
 		if (player.xPos==0) { //exit to the left
@@ -102,7 +103,7 @@ void main(void) {
 		}
 		
 		//show lives and score
-		PrintNumber(SCR_1_PLANE,0,6,15,lives,1);
+		PrintNumber(SCR_1_PLANE,0,6,15,lives,GetNumDigits(lives));
 		PrintNumber(SCR_1_PLANE,0,6,16,score,GetNumDigits(score));
 		
 		WaitVsync();
@@ -156,6 +157,9 @@ void initGame() {
 	evilOtto.tileNum=otto;
 	evilOtto.palette=1;
 	evilOtto.direction=0;
+	evilOtto.isMoving=0;
+	evilOtto.xPos=0;
+	evilOtto.yPos=240;
 	
 	SeedRandom();
 	quickSwitchScreens(GetRandom(4));
@@ -414,8 +418,11 @@ void switchScreens(u16 direction) {
 		robots[i].xPos=200;
 	robotShot.xPos=200;
 	robotShot.hasBeenFired=0;
+	evilOtto.isMoving=0;
+	evilOtto.yPos=160;
 	drawRobots(numRobots);
 	SetSprite(robotShot.spriteID,TILEMAP_OFFSET+robotShot.tileNum,0,robotShot.xPos,robotShot.yPos,robotShot.palette);
+	SetSprite(evilOtto.spriteID,TILEMAP_OFFSET+evilOtto.tileNum,0,evilOtto.xPos,evilOtto.yPos,evilOtto.palette);
 	
 	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
 	PrintString(SCR_1_PLANE,0,0,16,"Score:");
@@ -516,6 +523,7 @@ void switchScreens(u16 direction) {
 	if (level < 255)
 		++level;
 	handleDifficulty(level);
+	#define FRAMES_PER_SECOND 60
 }
 
 void quickSwitchScreens(u16 direction) {
@@ -526,7 +534,6 @@ void quickSwitchScreens(u16 direction) {
 	ClearScreen(SCR_2_PLANE);
 	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
 	PrintString(SCR_1_PLANE,0,0,16,"Score:");
-	
 	
 	SeedRandom(); //seed rng
 	switch(direction) {
@@ -553,52 +560,59 @@ void quickSwitchScreens(u16 direction) {
 	
 	hasPlayerMoved=0;
 	spawnRobots(numRobots);
+	handleDifficulty(level);
 }
 
 void handleDifficulty(u8 level) {
+#define FRAMES_PER_SECOND 60
 	switch (level) {
 		case 0:
 		case 1:
 		robotSpeed=1;
 		robotShotSpeed=0;
 		SetPalette(SPRITE_PLANE,1,0,RGB(15,15,0),RGB(15,15,0),RGB(15,9,0)); //yellow
+		ottoMovementTimer=0*FRAMES_PER_SECOND; //15 seconds
 		break;
 		case 2:
 		case 3:
 		robotSpeed=1;
 		robotShotSpeed=1;
 		SetPalette(SPRITE_PLANE,1,0,RGB(12,10,8),RGB(15,15,0),RGB(15,9,0)); //brown
+		ottoMovementTimer=13*FRAMES_PER_SECOND;
 		break;
 		case 4:
 		case 5:
 		robotSpeed=2;
 		robotShotSpeed=1;
 		SetPalette(SPRITE_PLANE,1,0,RGB(0,15,0),RGB(15,15,0),RGB(15,9,0)); //green
+		ottoMovementTimer=12*FRAMES_PER_SECOND;
 		break;
 		case 6:
 		case 7:
 		robotSpeed=2;
 		robotShotSpeed=2;
 		SetPalette(SPRITE_PLANE,1,0,RGB(15,6,11),RGB(15,15,0),RGB(15,9,0)); //pink
+		ottoMovementTimer=12*FRAMES_PER_SECOND;
 		break;
 		case 8:
 		case 9:
 		robotSpeed=3;
 		robotShotSpeed=2;
 		SetPalette(SPRITE_PLANE,1,0,RGB(0,0,15),RGB(15,15,0),RGB(15,9,0)); //blue
+		ottoMovementTimer=12*FRAMES_PER_SECOND;
 		break;
 		case 10:
 		case 11:
 		robotSpeed=4;
 		robotShotSpeed=2;
 		SetPalette(SPRITE_PLANE,1,0,RGB(14,14,13),RGB(15,15,0),RGB(15,9,0)); //beige
+		ottoMovementTimer=12*FRAMES_PER_SECOND;
 		break;
 		default:
 		robotSpeed=4;
 		robotShotSpeed=3;
 		SetPalette(SPRITE_PLANE,1,0,RGB(13,7,13),RGB(15,15,0),RGB(15,9,0)); //purple
-		
-
+		ottoMovementTimer=12*FRAMES_PER_SECOND;
 	}
 }
 
@@ -638,9 +652,11 @@ void handlePlayerDeath() { //todo: add death animation
 		SetSprite(player.spriteID+1,TILEMAP_OFFSET+player.tileNum+1,1,0,8,0); //draw bottom player sprite
 		SetSprite(robotShot.spriteID,TILEMAP_OFFSET+robotShot.tileNum,0,robotShot.xPos,robotShot.yPos,robotShot.palette); //draw robot projectile
 		drawRobots(numRobots);
-		WaitVsync(); //wait 2 frames
+		WaitVsync(); //wait frame
 		--deathAnimCounter;
 	}
+	evilOtto.yPos=160;
+	evilOtto.isMoving=0;
 	if (lives!=0) {
 		--lives;
 		quickSwitchScreens(GetRandom(3));
@@ -743,7 +759,6 @@ void handleRobotPlayerCollision() {
 	for (i=0; i < numRobots; ++i) {
 		if ((robots[i].xPos+4) > player.xPos && (robots[i].xPos+5) < player.xPos+9) {
 			if ((robots[i].yPos+4) > player.yPos && (robots[i].yPos+5) < player.yPos+10) {
-				despawnRobot(&robots[i]);
 				handlePlayerDeath();
 			}
 		}
@@ -916,11 +931,11 @@ void shootPlayer(SPRITE robotShooting, u8 speed) {
 
 }
 
-void moveOtto(void) {
+void moveOtto() {
 	#define RETARGET_TIMEOUT 5
 	#define OTTO_SLOWDOWN_FACTOR 2
 	static u8 resetTargetTimer=RETARGET_TIMEOUT;
-	static u8 ottoMovementTimer=OTTO_SLOWDOWN_FACTOR;
+	static u8 ottoSlowdownTimer=OTTO_SLOWDOWN_FACTOR;
 	static u8 ottoXTarget,ottoYTarget,isOttoMovingRight,isOttoMovingDown,initialXPos;
 	if (resetTargetTimer==0) {
 		if (evilOtto.xPos < player.xPos) {
@@ -931,29 +946,39 @@ void moveOtto(void) {
 			ottoXTarget=evilOtto.xPos-5;
 			isOttoMovingRight=0;
 		}
-		if (evilOtto.yPos < player.yPos) {
-			ottoYTarget=evilOtto.yPos+10;
+		if (evilOtto.yPos < player.yPos)
 			isOttoMovingDown=1;
-		}
-		else {
-			ottoYTarget=evilOtto.yPos-10;
+		else
 			isOttoMovingDown=0;
-		}
 		resetTargetTimer=RETARGET_TIMEOUT;
 		initialXPos=evilOtto.xPos;
 	}
-	else if (ottoMovementTimer==0) {
+	else if (ottoSlowdownTimer==0) {
 		if (isOttoMovingRight)
-			evilOtto.xPos+=2;
+			evilOtto.xPos+=1;
 		else
-			evilOtto.xPos-=2;
+			evilOtto.xPos-=1;
 		if (isOttoMovingDown)
-			evilOtto.yPos+=5;
+			evilOtto.yPos+=3;
 		else
-			evilOtto.yPos-=5;
+			evilOtto.yPos-=3;
 		resetTargetTimer--;
-		ottoMovementTimer=OTTO_SLOWDOWN_FACTOR;
+		ottoSlowdownTimer=OTTO_SLOWDOWN_FACTOR;
 	}
 	else
+		ottoSlowdownTimer--;
+}
+
+void handleOttoMovement() {
+	if (ottoMovementTimer==0 && !evilOtto.isMoving)
+		evilOtto.isMoving=1;
+	else if (!evilOtto.isMoving)
 		ottoMovementTimer--;
+	if (evilOtto.isMoving)
+		moveOtto();
+//collision detection	
+	if ((evilOtto.xPos+4) > player.xPos && (evilOtto.xPos+5) < player.xPos+9) {
+		if ((evilOtto.yPos+4) > player.yPos && (evilOtto.yPos+5) < player.yPos+10)
+			handlePlayerDeath();
+	}
 }
