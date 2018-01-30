@@ -1,6 +1,7 @@
 #include "ngpc.h"		// required
 #include "carthdr.h"		// required
 #include "library.h"		// NGPC routines
+#include "title.c" //title screen
 #include "tiles.c" //graphics
 #include "map.h" //maps
 #include "main.h" //structs
@@ -9,7 +10,6 @@
 
 /*
 -----todo list-----
-title screen
 sound
 
 */
@@ -27,7 +27,7 @@ PROJECTILE robotShot;
 #define MAX_NUM_ROBOTS 10
 SPRITE robots[MAX_NUM_ROBOTS];
 
-void test(void);
+
 void initGame(void);
 void drawMap(u8 mapNum);
 void drawMapColumn(u8 mapNum,u8 colNum, u8 whereToPlace);
@@ -63,10 +63,21 @@ void handleOttoMovement(void);
 void main(void) {
 	InitNGPC();
 	SysSetSystemFont();
+	SetBackgroundColour(RGB(0, 0, 0));
+	showTitleScreen();
 	InstallTileSetAt(tiles,sizeof(tiles)/2,TILEMAP_OFFSET);
 	initGame();
 
 	while (1) {
+		//pause game function
+		if (JOYPAD & J_OPTION) {
+			PrintString(SCR_1_PLANE,0,6,4,"Paused");
+			Sleep(50);
+			while (!(JOYPAD & J_OPTION));
+			Sleep(50);
+			PrintString(SCR_1_PLANE,0,6,4,"      ");
+		}
+		
 		handlePlayerMovement();
 		handlePlayerShot();	
 		animatePlayerMovement();
@@ -114,7 +125,6 @@ void initGame() {
 	ClearScreen(SCR_2_PLANE);
 	scrollXPos=0;
 	scrollYPos=0;
-	SetBackgroundColour(RGB(0, 0, 0));
 	SetPalette(SCR_2_PLANE, 0, 0, RGB(3,2,9), RGB(0,0,0), RGB(0,0,0));
 	SetPalette(SCR_1_PLANE, 0, 0, RGB(15,15,15), RGB(15,15,15), RGB(15,15,15));
 	SetPalette(SPRITE_PLANE, 0, 0, RGB(15,15,15), RGB(15,0,2), RGB(15,15,0)); //player palette
@@ -352,7 +362,7 @@ void animatePlayerMovement() {
 }
 
 void handlePlayerShot() {
-	if ((JOYPAD & J_A) && !playerShot.hasBeenFired) { //determines shot starting location
+	if ((JOYPAD & (J_A | J_B)) && !playerShot.hasBeenFired) { //determines shot starting location
 		playerShot.xPos=player.xPos;
 		playerShot.yPos=player.yPos+4;
 		playerShot.direction=player.direction;
@@ -421,9 +431,6 @@ void switchScreens(u16 direction) {
 	drawRobots(numRobots);
 	SetSprite(robotShot.spriteID,TILEMAP_OFFSET+robotShot.tileNum,0,robotShot.xPos,robotShot.yPos,robotShot.palette);
 	SetSprite(evilOtto.spriteID,TILEMAP_OFFSET+evilOtto.tileNum,0,evilOtto.xPos,evilOtto.yPos,evilOtto.palette);
-	
-	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
-	PrintString(SCR_1_PLANE,0,0,16,"Score:");
 	
 	SeedRandom(); //seed rng
 	switch(direction) {
@@ -521,7 +528,9 @@ void switchScreens(u16 direction) {
 	if (level < 255)
 		++level;
 	handleDifficulty(level);
-	#define FRAMES_PER_SECOND 60
+		
+	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
+	PrintString(SCR_1_PLANE,0,0,16,"Score:");
 }
 
 void quickSwitchScreens(u16 direction) {
@@ -767,6 +776,7 @@ void handleRobotPlayerCollision() {
 void despawnRobot(SPRITE* robot) {
 	SetSprite(robot->spriteID,TILEMAP_OFFSET+robotDead,0,robot->xPos,robot->yPos,robot->palette); //draw sprite
 	WaitVsync();
+	WaitVsync();
 	robot->xPos=180; //move robot offscreen
 	robot->isMoving=0;
 	robot->isAlive=0;
@@ -866,7 +876,7 @@ void handleRobotMovement(u8 speed) {
 					closestRobot=i;
 			}
 		}	
-		PrintNumber(SCR_1_PLANE,0,0,18,closestRobot,3);
+		//PrintNumber(SCR_1_PLANE,0,0,18,closestRobot,3);
 		robottomove=closestRobot;
 		
 		robots[robottomove].isMoving=1;
