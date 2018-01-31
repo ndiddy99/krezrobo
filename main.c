@@ -162,7 +162,7 @@ void initGame() {
 	playerShot.palette=0;
 	playerShot.hasBeenFired=0;
 	
-	numRobots=5;
+	numRobots=6;
 	numRobotsOnField=5;
 	robotStandingAnimCounter=0;
 	robotWalkingAnimCounter=0;
@@ -451,7 +451,6 @@ void switchScreens(u16 direction) {
 	SetSprite(robotShot.spriteID,TILEMAP_OFFSET+robotShot.tileNum,0,robotShot.xPos,robotShot.yPos,robotShot.palette);
 	SetSprite(evilOtto.spriteID,TILEMAP_OFFSET+evilOtto.tileNum,0,evilOtto.xPos,evilOtto.yPos,evilOtto.palette);
 	
-	SeedRandom(); //seed rng
 	switch(direction) {
 		case 0: //left
 		tileNum=scrollXPos>>3;
@@ -563,7 +562,6 @@ void quickSwitchScreens(u16 direction) {
 	PrintString(SCR_1_PLANE,0,0,16,"Score:");
 	PrintString(SCR_1_PLANE,0,1,17,"High:");
 	
-	SeedRandom(); //seed rng
 	switch(direction) {
 		case 0:
 		drawMap(sideEnterMaps[GetRandom(4)]);
@@ -653,8 +651,12 @@ void handlePlayerShotCollision(PROJECTILE* shot) {
 	}
 }
 
-void handlePlayerDeath() { //todo: add death animation
+void handlePlayerDeath() {
 	u8 deathAnimCounter=50;
+	playerShot.hasBeenFired=0; //don't have playerShot do random stuff when player dies
+	playerShot.xPos=200;
+	playerShot.yPos=0;
+	SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
 	PlaySound(SND_PLAYERDEATH);
 	while (deathAnimCounter>0) {
 		if (deathAnimCounter & 1) {
