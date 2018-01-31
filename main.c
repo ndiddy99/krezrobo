@@ -8,12 +8,6 @@
 #include <stdlib.h>		// std C routines
 #include <stdio.h>
 
-/*
------todo list-----
-sound
-
-*/
-
 
 #define TILEMAP_OFFSET 128 //offset in tilemap due to system font taking up first half
 u8 mapNum,slowCounter,numRobots,playerAnimCounter,robotStandingAnimCounter,robotWalkingAnimCounter,
@@ -61,10 +55,23 @@ void moveOtto(void);
 void handleOttoMovement(void);
 
 void main(void) {
+	#define SND_PLAYERDEATH 1
+	#define SND_ROBOTDEATH 2
+	#define SND_PLAYERSHOT 3
+	#define SND_ROBOTSHOT 4
+	const SOUNDEFFECT Sounds[4] = {
+    { 0, 0x35, 0, 0x80, 8, 1, 2, 0x40, 0x80, 0xf, 0,0,0,0,0 },
+    { 0, 0x10, 0, 0x60, 0, 1, 1, 0x44, 0x82, 0xf, 0,0,0,0,0 },
+    { 1, 0x10, 0, 0x70, 4, 1, 0, 0x44, 0x82, 0xf, 0,0,0,0,0 },
+    { 1, 0x10, 0, 0x350, 4, 2, 0, 0x44, 0x82, 0xf, 0,0,0,0,0 }
+	};
 	InitNGPC();
 	SysSetSystemFont();
 	SetBackgroundColour(RGB(0, 0, 0));
 	hiScore=1000; //not in initGame because don't want it reset to 0 between games
+
+	InstallSoundDriver();
+	InstallSounds(Sounds,4);
 	initGame();
 
 	while (1) {
@@ -382,6 +389,7 @@ void handlePlayerShot() {
 		else
 			playerShot.tileNum=horizontalShot;
 		playerShot.hasBeenFired=1;
+		PlaySound(SND_PLAYERSHOT);
 	}
 
 	if (playerShot.hasBeenFired) {
@@ -647,6 +655,7 @@ void handlePlayerShotCollision(PROJECTILE* shot) {
 
 void handlePlayerDeath() { //todo: add death animation
 	u8 deathAnimCounter=50;
+	PlaySound(SND_PLAYERDEATH);
 	while (deathAnimCounter>0) {
 		if (deathAnimCounter & 1) {
 			switch (player.direction) {
@@ -789,6 +798,7 @@ void handleRobotPlayerCollision() {
 
 
 void despawnRobot(SPRITE* robot) {
+	PlaySound(SND_ROBOTDEATH);
 	SetSprite(robot->spriteID,TILEMAP_OFFSET+robotDead,0,robot->xPos,robot->yPos,robot->palette); //draw sprite
 	WaitVsync();
 	WaitVsync();
@@ -915,13 +925,14 @@ void handleRobotMovement(u8 speed) {
 
 void shootPlayer(SPRITE robotShooting, u8 speed) {
 	if (speed > 0) {
-		if (!robotShot.hasBeenFired && hasPlayerMoved) { //don't shoot before player starts moving
+		if (!robotShot.hasBeenFired && hasPlayerMoved && robotShooting.isAlive) { //don't shoot before player starts moving
 			robotShot.direction=robotShooting.direction;
 			robotShot.xPos=robotShooting.xPos;
 			robotShot.yPos=robotShooting.yPos;
 			robotShot.hasBeenFired=1;
+			PlaySound(SND_ROBOTSHOT);
 		}
-		else if (robotShooting.isMoving && hasPlayerMoved) { //only fire if robot is moving
+		else if (robotShooting.isMoving && hasPlayerMoved && robotShooting.isAlive) { //only fire if robot is moving
 			switch (robotShot.direction) {
 				case 0:
 				robotShot.xPos-=speed;
