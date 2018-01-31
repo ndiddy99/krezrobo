@@ -595,42 +595,41 @@ void handleDifficulty(u8 level) {
 #define FRAMES_PER_SECOND 60
 	switch (level) {
 		case 0:
-		case 1:
 		robotSpeed=1;
 		robotShotSpeed=0;
 		SetPalette(SPRITE_PLANE,1,0,RGB(15,15,0),RGB(15,15,0),RGB(15,9,0)); //yellow
 		ottoMovementTimer=15*FRAMES_PER_SECOND; //15 seconds
 		break;
+		case 1:
 		case 2:
-		case 3:
 		robotSpeed=1;
 		robotShotSpeed=1;
 		SetPalette(SPRITE_PLANE,1,0,RGB(12,10,8),RGB(15,15,0),RGB(15,9,0)); //brown
 		ottoMovementTimer=13*FRAMES_PER_SECOND;
 		break;
+		case 3:
 		case 4:
-		case 5:
 		robotSpeed=2;
 		robotShotSpeed=1;
 		SetPalette(SPRITE_PLANE,1,0,RGB(0,15,0),RGB(15,15,0),RGB(15,9,0)); //green
 		ottoMovementTimer=12*FRAMES_PER_SECOND;
 		break;
+		case 5:
 		case 6:
-		case 7:
 		robotSpeed=2;
 		robotShotSpeed=2;
 		SetPalette(SPRITE_PLANE,1,0,RGB(15,6,11),RGB(15,15,0),RGB(15,9,0)); //pink
 		ottoMovementTimer=12*FRAMES_PER_SECOND;
 		break;
+		case 7:
 		case 8:
-		case 9:
 		robotSpeed=3;
 		robotShotSpeed=2;
 		SetPalette(SPRITE_PLANE,1,0,RGB(0,0,15),RGB(15,15,0),RGB(15,9,0)); //blue
 		ottoMovementTimer=12*FRAMES_PER_SECOND;
 		break;
+		case 9:
 		case 10:
-		case 11:
 		robotSpeed=4;
 		robotShotSpeed=2;
 		SetPalette(SPRITE_PLANE,1,0,RGB(14,14,13),RGB(15,15,0),RGB(15,9,0)); //beige
