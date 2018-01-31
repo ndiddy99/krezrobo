@@ -19,7 +19,7 @@ sound
 u8 mapNum,slowCounter,numRobots,playerAnimCounter,robotStandingAnimCounter,robotWalkingAnimCounter,
 isRobotMoving,robottomove,robotMotionDelay,robotWalkCounter,lives,tempScreenCounter,numRobotsOnField,
 scrollXPos,scrollYPos,hasPlayerMoved,level,robotSpeed,robotShotSpeed;
-u16 currentTile,score,ottoMovementTimer;
+u16 currentTile,score,hiScore,ottoMovementTimer;
 
 SPRITE player, evilOtto;
 PROJECTILE playerShot;
@@ -64,17 +64,16 @@ void main(void) {
 	InitNGPC();
 	SysSetSystemFont();
 	SetBackgroundColour(RGB(0, 0, 0));
-	showTitleScreen();
-	InstallTileSetAt(tiles,sizeof(tiles)/2,TILEMAP_OFFSET);
+	hiScore=1000; //not in initGame because don't want it reset to 0 between games
 	initGame();
 
 	while (1) {
 		//pause game function
 		if (JOYPAD & J_OPTION) {
 			PrintString(SCR_1_PLANE,0,6,4,"Paused");
-			Sleep(50);
+			Sleep(20);
 			while (!(JOYPAD & J_OPTION));
-			Sleep(50);
+			Sleep(20);
 			PrintString(SCR_1_PLANE,0,6,4,"      ");
 		}
 		
@@ -112,8 +111,11 @@ void main(void) {
 		}
 		
 		//show lives and score
+		if (score > hiScore)
+			hiScore=score;
 		PrintNumber(SCR_1_PLANE,0,6,15,lives,GetNumDigits(lives));
 		PrintNumber(SCR_1_PLANE,0,6,16,score,GetNumDigits(score));
+		PrintNumber(SCR_1_PLANE,0,6,17,hiScore,GetNumDigits(hiScore));
 		
 		WaitVsync();
 		
@@ -121,6 +123,14 @@ void main(void) {
 }
 
 void initGame() {
+	u8 i;
+	for (i=0; i < 64; ++i)
+		SetSprite(i,0,0,200,0,0); //move all sprites offscreen
+	showTitleScreen();
+	ShiftScroll(SCR_1_PLANE,0,0);
+	ShiftScroll(SCR_2_PLANE,0,0);
+	
+	InstallTileSetAt(tiles,sizeof(tiles)/2,TILEMAP_OFFSET);
 	ClearScreen(SCR_1_PLANE);
 	ClearScreen(SCR_2_PLANE);
 	scrollXPos=0;
@@ -183,6 +193,7 @@ void initGame() {
 	SetSprite(playerShot.spriteID,TILEMAP_OFFSET+playerShot.tileNum,0,playerShot.xPos,playerShot.yPos,playerShot.palette);
 	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
 	PrintString(SCR_1_PLANE,0,0,16,"Score:");
+	PrintString(SCR_1_PLANE,0,1,17,"High:");
 	handleDifficulty(0);
 }
 
@@ -531,6 +542,7 @@ void switchScreens(u16 direction) {
 		
 	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
 	PrintString(SCR_1_PLANE,0,0,16,"Score:");
+	PrintString(SCR_1_PLANE,0,1,17,"High:");
 }
 
 void quickSwitchScreens(u16 direction) {
@@ -541,6 +553,7 @@ void quickSwitchScreens(u16 direction) {
 	ClearScreen(SCR_2_PLANE);
 	PrintString(SCR_1_PLANE,0,0,15,"Lives:");
 	PrintString(SCR_1_PLANE,0,0,16,"Score:");
+	PrintString(SCR_1_PLANE,0,1,17,"High:");
 	
 	SeedRandom(); //seed rng
 	switch(direction) {
@@ -674,7 +687,9 @@ void handlePlayerDeath() { //todo: add death animation
 		while (tempScreenCounter!=0) {
 			tempScreenCounter--;
 			WaitVsync();
-		} //todo: initgame should show title screen eventually
+		} 
+		ClearScreen(SCR_1_PLANE);
+		ClearScreen(SCR_2_PLANE);
 		initGame();
 	}
 }
