@@ -641,6 +641,7 @@ void handleDifficulty(u8 level) {
 		robotShotSpeed=3;
 		SetPalette(SPRITE_PLANE,1,0,RGB(13,7,13),RGB(15,15,0),RGB(15,9,0)); //purple
 		ottoMovementTimer=12*FRAMES_PER_SECOND;
+		numRobots=6;
 	}
 }
 
@@ -723,8 +724,7 @@ void spawnRobots(u8 numRobots) {
 	u8 i;
 	diffX=255;
 	diffY=255;
-#define DISTANCE_FROM_PLAYER 40
-	SeedRandom();
+#define DISTANCE_FROM_PLAYER 15
 	
 	for (i=0; i < numRobots; ++i) {
 		do {  //robots shouldn't spawn inside walls
@@ -733,7 +733,7 @@ void spawnRobots(u8 numRobots) {
 			diffX=GetDifference(robots[i].xPos,player.xPos);
 			diffY=GetDifference(robots[i].yPos,player.yPos);
 			//kinda messy but putting GetDifference in the while() statement won't compile for some reason
-		} while (checkRobotBGCollision(robots[i]) && diffX < DISTANCE_FROM_PLAYER && diffY < DISTANCE_FROM_PLAYER); 
+	} while (checkRobotBGCollision(robots[i]) || diffX < DISTANCE_FROM_PLAYER || diffY < DISTANCE_FROM_PLAYER); 
 		
 		robots[i].isAlive=1;
 		numRobotsOnField=numRobots;
