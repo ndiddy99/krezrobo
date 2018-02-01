@@ -163,7 +163,7 @@ void initGame() {
 	playerShot.hasBeenFired=0;
 	
 	numRobots=6;
-	numRobotsOnField=5;
+	numRobotsOnField=6;
 	robotStandingAnimCounter=0;
 	robotWalkingAnimCounter=0;
 	isRobotMoving=0;
@@ -638,7 +638,7 @@ void handleDifficulty(u8 level) {
 		robotShotSpeed=3;
 		SetPalette(SPRITE_PLANE,1,0,RGB(13,7,13),RGB(15,15,0),RGB(15,9,0)); //purple
 		ottoMovementTimer=12*FRAMES_PER_SECOND;
-		numRobots=6;
+		numRobots=8;
 	}
 }
 
@@ -933,7 +933,7 @@ void shootPlayer(SPRITE robotShooting, u8 speed) {
 			robotShot.hasBeenFired=1;
 			PlaySound(SND_ROBOTSHOT);
 		}
-		else if (robotShooting.isMoving && hasPlayerMoved && robotShooting.isAlive) { //only fire if robot is moving
+		else if (hasPlayerMoved && robotShot.hasBeenFired) { //only fire if robot is moving
 			switch (robotShot.direction) {
 				case 0:
 				robotShot.xPos-=speed;
